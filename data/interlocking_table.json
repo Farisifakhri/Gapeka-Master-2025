@@ -1,0 +1,26 @@
+{
+  "routes": {
+    "ROUTE_A_J1": {
+      "id": "ROUTE_A_J1",
+      "description": "Masuk dari arah Serang ke Jalur 1 (Belok)",
+      "start_signal": "S_IN_SERANG",
+      "destination_track": 1,
+      "required_switches": {
+        "W11": "REVERSE"
+      },
+      "signal_aspect": "YELLOW",
+      "conflicting_routes": ["ROUTE_A_J2", "ROUTE_OUT_J1"]
+    },
+    "ROUTE_A_J2": {
+      "id": "ROUTE_A_J2",
+      "description": "Masuk dari arah Serang ke Jalur 2 (Lurus)",
+      "start_signal": "S_IN_SERANG",
+      "destination_track": 2,
+      "required_switches": {
+        "W11": "NORMAL"
+      },
+      "signal_aspect": "GREEN",
+      "conflicting_routes": ["ROUTE_A_J1", "ROUTE_OUT_J2"]
+    }
+  }
+}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPKA Stasiun Tonjong Baru</title>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="game-area">
+        <div class="info-board">
+            <div class="station-name">STASIUN TONJONG BARU (TOJB)</div>
+            <div id="clock">00:00</div>
+        </div>
+
+        <div class="track-container" id="map-container">
+    
+    <svg class="track-map" width="100%" height="100%" preserveAspectRatio="none">
+        <defs>
+            <style>
+                .rail-line { stroke: #555; stroke-width: 4; fill: none; }
+                .platform-block { fill: #3a3a50; stroke: none; }
+            </style>
+        </defs>
+
+        <rect x="20%" y="15%" width="60%" height="40" class="platform-block" />
+
+        <line x1="0" y1="50%" x2="10%" y2="50%" class="rail-line" /> <line x1="90%" y1="50%" x2="100%" y2="50%" class="rail-line" /> <line x1="10%" y1="50%" x2="20%" y2="25%" class="rail-line" /> <line x1="10%" y1="50%" x2="20%" y2="75%" class="rail-line" /> <line x1="20%" y1="25%" x2="80%" y2="25%" class="rail-line" /> <line x1="20%" y1="75%" x2="80%" y2="75%" class="rail-line" /> <line x1="80%" y1="25%" x2="90%" y2="50%" class="rail-line" /> <line x1="80%" y1="75%" x2="90%" y2="50%" class="rail-line" /> </svg>
+
+    <div class="label" style="top: 10px; left: 45%; color: #88c;">JALUR 1 (Peron)</div>
+    <div class="label" style="top: 160px; left: 45%; color: #aaa;">JALUR 2 (Langsung)</div>
+
+    <div id="sig-j1" class="signal RED" style="top: 40px; left: 78%;"></div>
+    <div id="sig-j2" class="signal RED" style="top: 140px; left: 78%;"></div>
+
+    <div id="train-layer"></div>
+</div>
+
+        <div class="control-panel">
+            <div class="panel-group">
+                <h4>Jalur 1 (Commuter)</h4>
+                <button class="btn-green" onclick="requestRoute('ROUTE_A_J1')">Buka Rute</button>
+                <button class="btn-red" onclick="releaseRoute('ROUTE_A_J1')">Tutup Rute</button>
+            </div>
+            
+            <div class="panel-group">
+                <h4>Jalur 2 (Barang)</h4>
+                <button class="btn-green" onclick="requestRoute('ROUTE_A_J2')">Buka Rute</button>
+                <button class="btn-red" onclick="releaseRoute('ROUTE_A_J2')">Tutup Rute</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script> 
+</body>
+</html>

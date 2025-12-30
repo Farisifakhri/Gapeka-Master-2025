@@ -1,0 +1,26 @@
+[
+  {
+    "ka_id": "312",
+    "name": "CL Merak",
+    "type": "COMMUTER",
+    "priority": 2,
+    "schedule": {
+      "arrival": "08:44",
+      "departure": "08:46"
+    },
+    "speed_factor": 1,
+    "color": "#e60000" 
+  },
+  {
+    "ka_id": "2656",
+    "name": "Barang Klinker",
+    "type": "FREIGHT",
+    "priority": 1,
+    "schedule": {
+      "arrival": "08:48",
+      "departure": "08:48"
+    },
+    "speed_factor": 0.8,
+    "color": "#2c3e50"
+  }
+]

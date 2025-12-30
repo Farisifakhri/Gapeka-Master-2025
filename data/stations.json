@@ -1,0 +1,25 @@
+{
+  "station_code": "TOJB",
+  "name": "Tonjong Baru",
+  "interlocking_type": "VPI-DBRI",
+  "tracks": [
+    {
+      "id": 1,
+      "type": "loop", 
+      "hasPlatform": true, 
+      "speedLimit": 30,
+      "status": "FREE" 
+    },
+    {
+      "id": 2,
+      "type": "straight",
+      "hasPlatform": false, 
+      "speedLimit": 90,
+      "status": "FREE"
+    }
+  ],
+  "signals": {
+    "in_merak": { "id": "S10A", "aspect": "RED" },
+    "in_serang": { "id": "S20B", "aspect": "RED" }
+  }
+}
