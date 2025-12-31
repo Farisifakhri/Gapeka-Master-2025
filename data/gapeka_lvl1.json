@@ -1,26 +1,119 @@
 [
   {
-    "ka_id": "312",
-    "name": "CL Merak",
+    "ka_id": "1151",
+    "name": "CL Bogor-Jakk",
     "type": "COMMUTER",
-    "priority": 2,
-    "schedule": {
-      "arrival": "08:44",
-      "departure": "08:46"
-    },
-    "speed_factor": 1,
-    "color": "#e60000" 
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "04:34", "departure": "04:35" },
+    "info": "KA Pertama"
   },
   {
-    "ka_id": "2656",
-    "name": "Barang Klinker",
-    "type": "FREIGHT",
-    "priority": 1,
-    "schedule": {
-      "arrival": "08:48",
-      "departure": "08:48"
-    },
-    "speed_factor": 0.8,
-    "color": "#2c3e50"
+    "ka_id": "1153F",
+    "name": "CL Bogor-Jakk",
+    "type": "COMMUTER",
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "04:39", "departure": "04:40" },
+    "info": "Wanita (Pink)"
+  },
+  {
+    "ka_id": "1155",
+    "name": "CL Bogor-Jakk",
+    "type": "COMMUTER",
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "04:49", "departure": "04:50" },
+    "info": "SF12"
+  },
+  {
+    "ka_id": "1157",
+    "name": "CL Bogor-Jakk",
+    "type": "COMMUTER",
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "04:59", "departure": "05:00" },
+    "info": "SF12"
+  },
+  {
+    "ka_id": "1159",
+    "name": "CL Bogor-Jakk",
+    "type": "COMMUTER",
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "05:04", "departure": "05:05" },
+    "info": "Awal Jam Sibuk"
+  },
+  {
+    "ka_id": "1001",
+    "name": "CL Bogor-MRI",
+    "type": "COMMUTER",
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "05:09", "departure": "05:10" },
+    "info": "Tujuan Manggarai"
+  },
+  {
+    "ka_id": "1161",
+    "name": "CL Bogor-Jakk",
+    "type": "COMMUTER",
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "05:14", "departure": "05:15" },
+    "info": "SF12"
+  },
+  {
+    "ka_id": "1000",
+    "name": "CL Jakk-Bogor",
+    "type": "COMMUTER",
+    "track_dest": 2,
+    "origin_stn": "TBT",
+    "schedule": { "arrival": "05:15", "departure": "05:16" },
+    "info": "Arah Bogor Pertama"
+  },
+  {
+    "ka_id": "1163F",
+    "name": "CL Bogor-Jakk",
+    "type": "COMMUTER",
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "05:19", "departure": "05:20" },
+    "info": "Wanita (Pink)"
+  },
+  {
+    "ka_id": "1165",
+    "name": "CL Bogor-Jakk",
+    "type": "COMMUTER",
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "05:24", "departure": "05:25" },
+    "info": "SF10"
+  },
+  {
+    "ka_id": "1167",
+    "name": "CL Bogor-Jakk",
+    "type": "COMMUTER",
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "05:29", "departure": "05:30" },
+    "info": "SF12"
+  },
+  {
+    "ka_id": "1002",
+    "name": "CL Jakk-Bogor",
+    "type": "COMMUTER",
+    "track_dest": 2,
+    "origin_stn": "TBT",
+    "schedule": { "arrival": "05:32", "departure": "05:33" },
+    "info": "Arah Bogor"
+  },
+  {
+    "ka_id": "1169",
+    "name": "CL Bogor-Jakk",
+    "type": "COMMUTER",
+    "track_dest": 1,
+    "origin_stn": "DRN",
+    "schedule": { "arrival": "05:34", "departure": "05:35" },
+    "info": "SF12"
   }
 ]

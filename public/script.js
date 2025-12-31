@@ -1,120 +1,164 @@
 const socket = io();
 
-// === LISTENER SOCKET.IO ===
+// --- AUDIO ASSETS ---
+const audioAmbience = document.getElementById('sfx-ambience');
 
-// 1. Update Jam Game
+// --- VOICE RECOGNITION SETUP ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognition();
+recognition.lang = 'id-ID'; 
+recognition.continuous = true; 
+recognition.interimResults = false;
+
+// --- START SYSTEM ---
+function startSystem() {
+    document.getElementById('start-overlay').style.display = 'none';
+    audioAmbience.volume = 0.5; 
+    audioAmbience.play().catch(e => console.log("Audio Error:", e));
+    startListening();
+}
+
+function startListening() {
+    try {
+        recognition.start();
+        updateMicUI(true, "LISTENING...");
+    } catch (e) { console.error("Mic Error:", e); }
+}
+
+recognition.onresult = (event) => {
+    const last = event.results.length - 1;
+    const command = event.results[last][0].transcript.toLowerCase();
+    
+    updateMicUI(true, `CMD: "${command}"`);
+    processVoiceCommand(command);
+    
+    setTimeout(() => updateMicUI(true, "LISTENING..."), 2000);
+};
+
+recognition.onend = () => { recognition.start(); };
+
+function updateMicUI(isActive, text) {
+    const container = document.querySelector('.voice-status');
+    const txt = document.getElementById('voice-text');
+    if(isActive) {
+        container.classList.add('voice-active');
+        txt.innerText = text;
+    } else {
+        container.classList.remove('voice-active');
+        txt.innerText = "VOICE: OFF";
+    }
+}
+
+// === LOGIKA PEMROSESAN SUARA ===
+function processVoiceCommand(cmd) {
+    let routeId = null;
+    let forcedAspect = null; // null = Auto (ikut sistem)
+
+    // 1. CEK WARNA/ASPEK (Override)
+    if (cmd.includes('kuning') || cmd.includes('hati') || cmd.includes('semboyan 6') || cmd.includes('enam')) {
+        forcedAspect = 'YELLOW';
+    } 
+    else if (cmd.includes('hijau') || cmd.includes('aman') || cmd.includes('semboyan 5') || cmd.includes('lima')) {
+        forcedAspect = 'GREEN';
+    }
+
+    // 2. CEK JALUR & AKSI
+    // Jalur 1
+    if (cmd.includes('satu') || cmd.includes('1')) {
+        if (cmd.includes('masuk')) routeId = 'ROUTE_IN_J1';
+        else if (cmd.includes('berangkat') || cmd.includes('keluar')) routeId = 'ROUTE_OUT_J1';
+    }
+    // Jalur 2
+    else if (cmd.includes('dua') || cmd.includes('2')) {
+        if (cmd.includes('masuk')) routeId = 'ROUTE_IN_J2';
+        else if (cmd.includes('berangkat') || cmd.includes('keluar')) routeId = 'ROUTE_OUT_J2';
+    }
+
+    // 3. KIRIM KE API
+    if (routeId) {
+        console.log(`🎤 Suara: ${routeId} | Aspek: ${forcedAspect || 'AUTO'}`);
+        reqRoute(routeId, forcedAspect);
+    }
+}
+
+// --- SOCKET LOGIC ---
+
 socket.on('time_update', (data) => {
     document.getElementById('clock').innerText = data.time;
 });
 
-// 2. Update Sinyal
-socket.on('signal_update', (data) => {
-    // Reset Sinyal ke Merah dulu (Fail-safe visual)
-    if (data.status === 'IDLE') {
-        document.getElementById('sig-j1').className = 'signal RED';
-        document.getElementById('sig-j2').className = 'signal RED';
-    } 
-    // Nyalakan Sinyal sesuai status backend
-    else {
-        if (data.routeId === 'ROUTE_A_J1') 
-            document.getElementById('sig-j1').className = `signal ${data.signalAspect}`;
-        if (data.routeId === 'ROUTE_A_J2') 
-            document.getElementById('sig-j2').className = `signal ${data.signalAspect}`;
+socket.on('init_signals', (signals) => {
+    for (const [key, val] of Object.entries(signals)) {
+        updateLampUI(key, val.aspect);
     }
 });
 
-// 3. Update Posisi Kereta (RENDER VISUAL KERETA)
-socket.on('train_update', (trains) => {
-    const layer = document.getElementById('train-layer');
-    layer.innerHTML = ''; // Bersihkan layer setiap frame
-
-    trains.forEach(t => {
-        const trainContainer = document.createElement('div');
-        trainContainer.className = 'train-container ' + t.type;
-        
-        // --- LOGIKA POSISI (Sesuai SVG Schematic) ---
-        // X Position: Persen horizontal
-        trainContainer.style.left = t.position + '%';
-        
-        // Y Position: Menentukan Jalur
-        // Default: Tengah (Petak Blok) -> Y = 100px (50% dari height 200px)
-        let topPos = 100; 
-        
-        // AREA WESEL & EMPLASEMEN (Antara 10% s.d. 90% peta)
-        // Di SVG, wesel mulai membelah di 10% dan menyatu lagi di 90%
-        if (t.position > 10 && t.position < 90) {
-            
-            // Masuk Jalur 1 (Atas)
-            // Y = 50px (25% dari height)
-            if (t.type === 'COMMUTER' || t.type === 'PASSENGER') {
-                topPos = 50; 
-            } 
-            
-            // Masuk Jalur 2 (Bawah)
-            // Y = 150px (75% dari height)
-            if (t.type === 'FREIGHT') {
-                topPos = 150; 
-            }
-        }
-
-        trainContainer.style.top = topPos + 'px';
-
-        // --- RENDER BENTUK KERETA ---
-        
-        // 1. Label Nomor KA
-        const label = document.createElement('div');
-        label.className = 'train-label';
-        label.innerText = t.ka_id;
-        trainContainer.appendChild(label);
-
-        // 2. Gerbong
-        if (t.type === 'COMMUTER') {
-            // Render 3 Gerbong KRL
-            for(let i=0; i<3; i++) {
-                const car = document.createElement('div');
-                car.className = 'car';
-                trainContainer.appendChild(car);
-            }
-        } else if (t.type === 'FREIGHT') {
-            // Render 1 Lokomotif
-            const loco = document.createElement('div');
-            loco.className = 'loco';
-            trainContainer.appendChild(loco);
-            // Render 4 Gerbong Barang
-            for(let i=0; i<4; i++) {
-                const wagon = document.createElement('div');
-                wagon.className = 'wagon';
-                trainContainer.appendChild(wagon);
-            }
-        }
-
-        layer.appendChild(trainContainer);
-    });
+socket.on('signal_update', (data) => {
+    updateLampUI(data.id, data.aspect);
 });
 
-// === FUNGSI REQUEST KE SERVER ===
+function updateLampUI(signalId, aspect) {
+    const lampEl = document.getElementById(`lamp-${signalId}`);
+    if (lampEl) lampEl.className = `lamp ${aspect}`;
+}
 
-async function requestRoute(routeId) {
+// REQUEST ROUTE (Kirim aspek jika ada)
+async function reqRoute(routeId, aspect = null) {
     try {
-        const res = await fetch('/api/route', {
+        // Efek visual tombol (biar kelihatan dipencet)
+        console.log("Mengirim Request:", routeId, aspect);
+        
+        const payload = { routeId };
+        if (aspect) payload.forcedAspect = aspect;
+
+        const res = await fetch('/api/interlocking/request-route', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ routeId })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
         });
         const d = await res.json();
-        
-        if(d.status === 'failed') {
-            alert("⚠️ " + d.reason); // Alert Error
-        }
-    } catch (e) {
-        console.error(e);
-    }
+        if(d.status === 'failed') console.warn(d.reason);
+    } catch(e) { console.error(e); }
 }
 
-async function releaseRoute(routeId) {
-    await fetch('/api/release-route', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ routeId })
+socket.on('train_update', (trains) => {
+    const tbody = document.getElementById('schedule-body');
+    tbody.innerHTML = '';
+
+    if (trains.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#555;">TIDAK ADA AKTIVITAS KERETA</td></tr>';
+        return;
+    }
+
+    trains.forEach(t => {
+        const tr = document.createElement('tr');
+        let loadColor = '#2ecc71'; 
+        if(t.passengerLoad > 40) loadColor = '#f1c40f'; 
+        if(t.passengerLoad > 80) loadColor = '#ff6b6b'; 
+
+        let stClass = '';
+        if(t.status === 'APPROACHING') stClass = 'st-APPROACHING';
+        if(t.status === 'DWELLING') stClass = 'st-DWELLING';
+        if(t.status === 'DEPARTING') stClass = 'st-DEPARTING';
+
+        tr.innerHTML = `
+            <td style="font-weight:bold; color:#fff;">${t.ka_id}</td>
+            <td style="font-size:0.9rem; color:#aaa;">${t.name}</td>
+            <td><span style="background:#333; padding:2px 6px; border-radius:3px;">${t.track_dest}</span></td>
+            <td><span class="speed-box">${t.displaySpeed}</span> <span class="speed-unit">km/h</span></td>
+            <td>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="load-text" style="color:${loadColor}">${t.passengerLoad}%</span>
+                </div>
+                <div class="load-bar-container">
+                    <div class="load-bar" style="width:${t.passengerLoad}%; background:${loadColor};"></div>
+                </div>
+            </td>
+            <td style="font-family:'Share Tech Mono'; font-size:1rem;">
+                Arr: ${t.schedule.arrival}<br> Dep: ${t.schedule.departure}
+            </td>
+            <td class="${stClass}">${t.info}</td>
+        `;
+        tbody.appendChild(tr);
     });
-}
+});

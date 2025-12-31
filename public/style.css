@@ -1,129 +1,231 @@
-/* RESET & UMUM */
-body { 
-    font-family: 'Consolas', 'Courier New', monospace; /* Font ala komputer jadul */
-    background: #1e1e1e; 
-    color: #ddd; 
-    text-align: center; 
-    margin: 0;
-    padding: 20px;
+:root {
+    --bg-dark: #0f1215;
+    --panel-bg: #191f26;
+    --accent-blue: #00d2d3;
+    --accent-orange: #ff9f43;
+    --accent-green: #2ecc71;
+    --accent-red: #ff6b6b;
+    --text-main: #c8d6e5;
+    --text-dim: #8395a7;
+    --border: #2f3640;
 }
 
-.game-area { 
-    width: 95%; 
-    max-width: 1000px; 
-    margin: 0 auto; 
-    background: #2a2a2a; 
-    padding: 15px; 
-    border-radius: 8px; 
-    border: 2px solid #444; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Rajdhani', sans-serif; /* Font Tech */
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 /* HEADER */
-.info-board { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    border-bottom: 2px solid #555; 
-    padding-bottom: 10px; 
-    margin-bottom: 10px;
-}
-.station-name { font-size: 1.5em; font-weight: bold; letter-spacing: 2px; color: #fff; text-transform: uppercase; }
-#clock { font-size: 2em; color: #00ffcc; font-weight: bold; text-shadow: 0 0 5px #00ffcc; }
-
-/* === AREA REL (LAYAR VDU) === */
-.track-container { 
-    position: relative; 
-    margin: 20px auto; 
-    border: 4px solid #555; /* Bingkai Monitor */
-    background: #000; /* Layar Mati (Hitam Pekat) */
-    height: 200px; 
-    width: 100%;
-    padding: 0; 
-    overflow: hidden; 
-    border-radius: 4px;
-    box-shadow: inset 0 0 20px rgba(0,0,0,1); /* Efek kedalaman layar */
-}
-
-/* SVG Peta di belakang */
-.track-map {
-    position: absolute;
-    top: 0; left: 0;
-    z-index: 0;
-    opacity: 0.8;
-}
-
-/* Label Jalur di dalam layar */
-.label { 
-    position: absolute; 
-    font-size: 11px; font-weight: bold; 
-    background: #000; padding: 2px 5px;
-    border: 1px solid #333;
-    z-index: 1;
-}
-
-/* === SINYAL === */
-.signal { 
-    position: absolute; 
-    width: 14px; height: 14px; 
-    border-radius: 50%; 
-    border: 1px solid #888; 
-    transition: 0.2s; 
-    z-index: 5; 
-    background: #333; /* Warna mati */
-}
-/* Efek Lampu Menyala */
-.signal.RED { background: #ff0000; box-shadow: 0 0 8px #ff0000; border-color: #ffaaaa; }
-.signal.YELLOW { background: #ffff00; box-shadow: 0 0 8px #ffff00; border-color: #ffffaa; }
-.signal.GREEN { background: #00ff00; box-shadow: 0 0 8px #00ff00; border-color: #aaffaa; }
-
-
-/* === VISUAL KERETA (PIXEL ART) === */
-.train-container {
-    position: absolute;
-    height: 24px; /* Tinggi Kereta */
+.header {
+    background: var(--panel-bg);
+    border-bottom: 2px solid var(--accent-blue);
+    padding: 15px 30px;
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    /* Transisi Gerak: Left (maju) lambat, Top (pindah jalur) agak cepat */
-    transition: left 1s linear, top 0.5s ease-in-out; 
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
     z-index: 10;
-    transform: translateY(-50%); /* PENTING: Supaya tengah kereta pas di garis */
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
 }
 
-.train-label {
-    position: absolute; top: -16px; left: 0; width: 100%;
-    text-align: center; font-size: 10px; color: #fff; font-weight: bold;
-    background: rgba(0,0,0,0.7); border-radius: 2px; padding: 1px 0;
+.header-left { display: flex; gap: 20px; align-items: center; }
+.logo-area { text-align: center; border-right: 1px solid var(--border); padding-right: 20px; }
+.logo-box { background: var(--accent-orange); color: #000; font-weight: 800; padding: 2px 8px; border-radius: 4px; font-size: 1.2rem; }
+.logo-text { font-size: 0.6rem; letter-spacing: 1px; margin-top: 2px; color: var(--accent-orange); }
+
+.stn-details h1 { margin: 0; font-size: 1.8rem; letter-spacing: 2px; color: #fff; text-shadow: 0 0 10px rgba(0, 210, 211, 0.3); }
+.stn-details span { font-size: 0.9rem; color: var(--accent-blue); font-family: 'Share Tech Mono', monospace; }
+
+#clock {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 2.5rem;
+    color: var(--accent-green);
+    text-align: right;
+    line-height: 1;
+}
+.clock-label { font-size: 0.7rem; color: var(--text-dim); text-align: right; letter-spacing: 2px; }
+
+/* MAIN DASHBOARD */
+.main-dashboard {
+    display: flex;
+    flex: 1;
+    padding: 20px;
+    gap: 20px;
 }
 
-/* Gerbong Dasar */
-.car { width: 35px; height: 18px; margin-right: 1px; border: 1px solid #111; position: relative; }
-
-/* Tipe KRL (Commuter) - Merah Putih Abu */
-.COMMUTER .car { 
-    background: linear-gradient(to bottom, #ddd 0%, #ddd 60%, #d60000 60%, #d60000 100%);
-    border-radius: 2px; 
-}
-.COMMUTER .car::after { content: ''; position: absolute; top: 4px; left: 4px; right: 4px; height: 5px; background: #333; }
-
-/* Tipe Barang (Freight) - Lokomotif Oranye + Gerbong Hitam */
-.FREIGHT .loco {
-    width: 32px; height: 20px;
-    background: #e67e22; /* Oranye KAI */
-    border: 1px solid #000; margin-right: 1px;
-    position: relative; border-radius: 3px 0 0 3px;
-}
-.FREIGHT .loco::before { content: ''; position: absolute; left: 2px; top: 3px; width: 8px; height: 6px; background: #222; } /* Kaca */
-.FREIGHT .wagon {
-    width: 30px; height: 16px; background: #444; margin-right: 1px; border: 1px solid #000;
+.panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
 }
 
-/* === PANEL KONTROL === */
-.control-panel { margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-.panel-group { background: #333; padding: 10px; border-radius: 4px; border: 1px solid #555; }
-.panel-group h4 { margin: 0 0 10px 0; border-bottom: 1px solid #555; padding-bottom: 5px; color: #aaa; font-size: 0.9em; }
+.panel-header {
+    background: rgba(0,0,0,0.2);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.1rem;
+}
 
-button { padding: 8px; cursor: pointer; font-weight: bold; border: none; border-radius: 3px; color: white; margin: 2px; width: 45%; font-size: 0.8em; }
-.btn-green { background: #28a745; } .btn-green:hover { background: #218838; }
-.btn-red { background: #dc3545; } .btn-red:hover { background: #c82333; }
+.led-indicator {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(46, 204, 113, 0.2);
+    color: var(--accent-green);
+    border: 1px solid var(--accent-green);
+}
+
+/* INTERLOCKING PANEL */
+.interlocking-panel { flex: 0 0 350px; } /* Fixed width */
+.control-grid { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+
+.track-card {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 15px;
+}
+.track-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+}
+.track-num { color: var(--accent-orange); font-weight: bold; }
+.track-dir { font-size: 0.8rem; color: var(--text-dim); }
+
+.signal-wrapper { display: flex; justify-content: space-between; align-items: center; }
+.signal-block { text-align: center; width: 45%; }
+.arrow-indicator { font-size: 1.5rem; color: var(--text-dim); opacity: 0.5; }
+
+.signal-lamp {
+    background: #000;
+    width: 40px; height: 40px;
+    margin: 0 auto 10px;
+    border-radius: 50%;
+    border: 3px solid #333;
+    display: flex;
+    align-items: center; justify-content: center;
+}
+.lamp { width: 100%; height: 100%; border-radius: 50%; opacity: 0.3; transition: 0.2s; }
+.lamp.RED { background: #ff0000; opacity: 1; box-shadow: 0 0 15px #ff0000; }
+.lamp.YELLOW { background: #ffe600; opacity: 1; box-shadow: 0 0 15px #ffe600; }
+.lamp.GREEN { background: #00ff00; opacity: 1; box-shadow: 0 0 15px #00ff00; }
+
+button {
+    width: 100%;
+    background: #2f3640;
+    color: #fff;
+    border: 1px solid var(--border);
+    padding: 8px;
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: 0.2s;
+}
+button:hover { background: var(--accent-blue); color: #000; border-color: var(--accent-blue); }
+button:active { transform: scale(0.95); }
+
+/* SCHEDULE TABLE */
+.schedule-panel { flex: 1; }
+.table-container { overflow-y: auto; flex: 1; }
+.live-table { width: 100%; border-collapse: collapse; }
+
+.live-table th {
+    background: #1e272e;
+    position: sticky; top: 0;
+    text-align: left;
+    padding: 12px;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+.live-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 1.1rem;
+    vertical-align: middle;
+}
+.live-table tr:hover { background: rgba(255,255,255,0.05); }
+
+/* DATA VISUALIZATION */
+.speed-box {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    color: var(--accent-blue);
+}
+.speed-unit { font-size: 0.8rem; color: var(--text-dim); }
+
+.load-bar-container {
+    width: 100%; height: 8px;
+    background: #333;
+    border-radius: 4px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+.load-bar { height: 100%; border-radius: 4px; transition: width 0.5s; }
+.load-text { font-size: 0.8rem; font-weight: bold; }
+
+/* Status Colors */
+.st-APPROACHING { color: var(--accent-orange); animation: blink 1s infinite; }
+.st-DWELLING { color: var(--accent-blue); }
+.st-DEPARTING { color: var(--accent-green); }
+
+@keyframes blink { 50% { opacity: 0.5; } }
+
+/* ... (CSS Sebelumnya tetap sama, TAMBAHKAN INI DI BAWAH) ... */
+
+/* OVERLAY START */
+#start-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 999;
+    display: flex; justify-content: center; align-items: center;
+}
+.start-box { text-align: center; border: 2px solid var(--accent-blue); padding: 40px; border-radius: 10px; background: var(--panel-bg); }
+.start-box h1 { color: var(--accent-blue); margin-bottom: 10px; }
+.start-box button { font-size: 1.2rem; padding: 15px 30px; margin-top: 20px; background: var(--accent-green); border: none; }
+
+/* VOICE STATUS */
+.voice-status {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 20px;
+    border: 1px solid var(--border);
+}
+#mic-icon { font-size: 1.5rem; filter: grayscale(100%); transition: 0.3s; }
+#voice-text { font-family: 'Share Tech Mono'; color: var(--text-dim); }
+
+/* Animation Listening */
+.voice-active #mic-icon { filter: grayscale(0%); animation: pulse-mic 1s infinite; }
+.voice-active #voice-text { color: var(--accent-red); font-weight: bold; }
+
+@keyframes pulse-mic {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* VOICE HELP */
+.voice-help {
+    padding: 15px;
+    border-top: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 0.8rem;
+}
+.voice-help ul { padding-left: 20px; margin: 5px 0 0 0; }
+.voice-help li { margin-bottom: 3px; color: var(--accent-orange); }

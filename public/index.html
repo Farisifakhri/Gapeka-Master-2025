@@ -3,54 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PPKA Stasiun Tonjong Baru</title>
-    
+    <title>PPKA Stasiun Cawang (CW)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="game-area">
-        <div class="info-board">
-            <div class="station-name">STASIUN TONJONG BARU (TOJB)</div>
-            <div id="clock">00:00</div>
+    <div id="start-overlay">
+        <div class="start-box">
+            <h1>SYSTEM BOOT</h1>
+            <p>Klik untuk mengaktifkan Audio & Voice Command</p>
+            <button onclick="startSystem()">AKTIFKAN SISTEM</button>
+        </div>
+    </div>
+
+    <audio id="sfx-ambience" loop>
+        <source src="assets/station_ambience.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="sfx-bell">
+        <source src="assets/bell_in.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="sfx-whistle">
+        <source src="assets/whistle.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-area">
+                <div class="logo-box">KAI</div>
+                <div class="logo-text">TRAIN CONTROL SYSTEM</div>
+            </div>
+            <div class="stn-details">
+                <h1>STASIUN CAWANG (CW)</h1>
+                <span>DAOP 1 JAKARTA - VOICE ACTIVATED</span>
+            </div>
+        </div>
+        
+        <div class="voice-status">
+            <div id="mic-icon">🎙️</div>
+            <div id="voice-text">VOICE: OFF</div>
         </div>
 
-        <div class="track-container" id="map-container">
-    
-    <svg class="track-map" width="100%" height="100%" preserveAspectRatio="none">
-        <defs>
-            <style>
-                .rail-line { stroke: #555; stroke-width: 4; fill: none; }
-                .platform-block { fill: #3a3a50; stroke: none; }
-            </style>
-        </defs>
+        <div class="header-right">
+            <div class="clock-label">SYSTEM TIME</div>
+            <div id="clock">00:00:00</div>
+        </div>
+    </div>
 
-        <rect x="20%" y="15%" width="60%" height="40" class="platform-block" />
-
-        <line x1="0" y1="50%" x2="10%" y2="50%" class="rail-line" /> <line x1="90%" y1="50%" x2="100%" y2="50%" class="rail-line" /> <line x1="10%" y1="50%" x2="20%" y2="25%" class="rail-line" /> <line x1="10%" y1="50%" x2="20%" y2="75%" class="rail-line" /> <line x1="20%" y1="25%" x2="80%" y2="25%" class="rail-line" /> <line x1="20%" y1="75%" x2="80%" y2="75%" class="rail-line" /> <line x1="80%" y1="25%" x2="90%" y2="50%" class="rail-line" /> <line x1="80%" y1="75%" x2="90%" y2="50%" class="rail-line" /> </svg>
-
-    <div class="label" style="top: 10px; left: 45%; color: #88c;">JALUR 1 (Peron)</div>
-    <div class="label" style="top: 160px; left: 45%; color: #aaa;">JALUR 2 (Langsung)</div>
-
-    <div id="sig-j1" class="signal RED" style="top: 40px; left: 78%;"></div>
-    <div id="sig-j2" class="signal RED" style="top: 140px; left: 78%;"></div>
-
-    <div id="train-layer"></div>
-</div>
-
-        <div class="control-panel">
-            <div class="panel-group">
-                <h4>Jalur 1 (Commuter)</h4>
-                <button class="btn-green" onclick="requestRoute('ROUTE_A_J1')">Buka Rute</button>
-                <button class="btn-red" onclick="releaseRoute('ROUTE_A_J1')">Tutup Rute</button>
+    <div class="main-dashboard">
+        
+        <div class="panel interlocking-panel">
+            <div class="panel-header">
+                <span>🚦 SIGNAL CONTROL</span>
+                <div class="led-indicator green">ONLINE</div>
             </div>
             
-            <div class="panel-group">
-                <h4>Jalur 2 (Barang)</h4>
-                <button class="btn-green" onclick="requestRoute('ROUTE_A_J2')">Buka Rute</button>
-                <button class="btn-red" onclick="releaseRoute('ROUTE_A_J2')">Tutup Rute</button>
+            <div class="control-grid">
+                <div class="track-card">
+                    <div class="track-head">
+                        <span class="track-num">JALUR 1</span>
+                        <span class="track-dir">KE MANGGARAI</span>
+                    </div>
+                    <div class="signal-wrapper">
+                        <div class="signal-block">
+                            <div class="signal-lamp"><div id="lamp-S_IN_J1" class="lamp RED"></div></div>
+                            <button onclick="reqRoute('ROUTE_IN_J1')">MASUK (J1)</button>
+                        </div>
+                        <div class="arrow-indicator">⬆️</div>
+                        <div class="signal-block">
+                            <div class="signal-lamp"><div id="lamp-S_OUT_J1" class="lamp RED"></div></div>
+                            <button onclick="reqRoute('ROUTE_OUT_J1')">KELUAR (J1)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="track-card">
+                    <div class="track-head">
+                        <span class="track-num">JALUR 2</span>
+                        <span class="track-dir">KE BOGOR</span>
+                    </div>
+                    <div class="signal-wrapper">
+                        <div class="signal-block">
+                            <div class="signal-lamp"><div id="lamp-S_IN_J2" class="lamp RED"></div></div>
+                            <button onclick="reqRoute('ROUTE_IN_J2')">MASUK (J2)</button>
+                        </div>
+                        <div class="arrow-indicator">⬇️</div>
+                        <div class="signal-block">
+                            <div class="signal-lamp"><div id="lamp-S_OUT_J2" class="lamp RED"></div></div>
+                            <button onclick="reqRoute('ROUTE_OUT_J2')">KELUAR (J2)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="voice-help">
+                <small>KATA KUNCI SUARA:</small>
+                <ul>
+                    <li>"Jalur Satu Masuk"</li>
+                    <li>"Jalur Satu Berangkat"</li>
+                    <li>"Jalur Dua Masuk"</li>
+                    <li>"Jalur Dua Berangkat"</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <div class="panel schedule-panel">
+            <div class="panel-header">
+                <span>🖥️ LIVE TRAIN MONITORING</span>
+                <span>AUTO-REFRESH: 1s</span>
+            </div>
+            <div class="table-container">
+                <table class="live-table">
+                    <thead>
+                        <tr>
+                            <th width="10%">KA</th>
+                            <th width="15%">Relasi</th>
+                            <th width="8%">Jalur</th>
+                            <th width="12%">Kecepatan</th>
+                            <th width="15%">Okupansi</th>
+                            <th width="10%">Jadwal</th>
+                            <th width="30%">Status & Info</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-body">
+                        </tbody>
+                </table>
             </div>
         </div>
+
     </div>
 
     <script src="/socket.io/socket.io.js"></script>

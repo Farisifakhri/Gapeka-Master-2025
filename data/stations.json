@@ -1,25 +1,25 @@
 {
-  "station_code": "TOJB",
-  "name": "Tonjong Baru",
-  "interlocking_type": "VPI-DBRI",
+  "station_code": "CW",
+  "name": "Stasiun Cawang",
+  "interlocking_type": "SSI-Siemens",
   "tracks": [
-    {
-      "id": 1,
-      "type": "loop", 
+    { 
+      "id": 1, 
+      "name": "Jalur 1 (Ke MRI/JAKK)", 
       "hasPlatform": true, 
-      "speedLimit": 30,
       "status": "FREE" 
     },
-    {
-      "id": 2,
-      "type": "straight",
-      "hasPlatform": false, 
-      "speedLimit": 90,
-      "status": "FREE"
+    { 
+      "id": 2, 
+      "name": "Jalur 2 (Ke BOO/NMO)", 
+      "hasPlatform": true, 
+      "status": "FREE" 
     }
   ],
   "signals": {
-    "in_merak": { "id": "S10A", "aspect": "RED" },
-    "in_serang": { "id": "S20B", "aspect": "RED" }
+    "S_IN_J1": { "id": "S_IN_J1", "name": "Masuk J1 (Dr Kalibata)", "aspect": "RED" },
+    "S_OUT_J1": { "id": "S_OUT_J1", "name": "Keluar J1", "aspect": "RED" },
+    "S_IN_J2": { "id": "S_IN_J2", "name": "Masuk J2 (Dr Tebet)", "aspect": "RED" },
+    "S_OUT_J2": { "id": "S_OUT_J2", "name": "Keluar J2", "aspect": "RED" }
   }
 }

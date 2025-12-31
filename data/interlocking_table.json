@@ -1,26 +1,36 @@
 {
   "routes": {
-    "ROUTE_A_J1": {
-      "id": "ROUTE_A_J1",
-      "description": "Masuk dari arah Serang ke Jalur 1 (Belok)",
-      "start_signal": "S_IN_SERANG",
-      "destination_track": 1,
-      "required_switches": {
-        "W11": "REVERSE"
-      },
-      "signal_aspect": "YELLOW",
-      "conflicting_routes": ["ROUTE_A_J2", "ROUTE_OUT_J1"]
+    "ROUTE_IN_J1": {
+      "id": "ROUTE_IN_J1",
+      "description": "Rute Masuk Jalur 1 (Arah JAKK)",
+      "signal_id": "S_IN_J1",
+      "target_track": 1,
+      "aspect": "YELLOW",
+      "duration": 10
     },
-    "ROUTE_A_J2": {
-      "id": "ROUTE_A_J2",
-      "description": "Masuk dari arah Serang ke Jalur 2 (Lurus)",
-      "start_signal": "S_IN_SERANG",
-      "destination_track": 2,
-      "required_switches": {
-        "W11": "NORMAL"
-      },
-      "signal_aspect": "GREEN",
-      "conflicting_routes": ["ROUTE_A_J1", "ROUTE_OUT_J2"]
+    "ROUTE_OUT_J1": {
+      "id": "ROUTE_OUT_J1",
+      "description": "Rute Keluar Jalur 1 (Arah JAKK)",
+      "signal_id": "S_OUT_J1",
+      "target_track": 1,
+      "aspect": "GREEN",
+      "duration": 5
+    },
+    "ROUTE_IN_J2": {
+      "id": "ROUTE_IN_J2",
+      "description": "Rute Masuk Jalur 2 (Arah BOO)",
+      "signal_id": "S_IN_J2",
+      "target_track": 2,
+      "aspect": "YELLOW",
+      "duration": 10
+    },
+    "ROUTE_OUT_J2": {
+      "id": "ROUTE_OUT_J2",
+      "description": "Rute Keluar Jalur 2 (Arah BOO)",
+      "signal_id": "S_OUT_J2",
+      "target_track": 2,
+      "aspect": "GREEN",
+      "duration": 5
     }
   }
 }

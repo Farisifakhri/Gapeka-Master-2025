@@ -3,25 +3,25 @@ const EventEmitter = require('events');
 class GameLoop extends EventEmitter {
     constructor() {
         super();
-        this.gameTime = new Date("2025-02-01T08:40:00"); // Start jam 08:40
+        // SET START TIME: 04:30:00
+        this.gameTime = new Date("2025-07-01T04:30:00"); 
         this.isPlaying = false;
     }
 
     start() {
         this.isPlaying = true;
-        console.log(`>>> GAME START: Waktu Server ${this.formatTime()} <<<`);
+        console.log(`>>> GAME START: Waktu Realtime Dimulai ${this.formatTime()} <<<`);
         
-        // Loop setiap 1 detik (1000ms) = nambah 1 menit waktu game
         setInterval(() => {
             if (this.isPlaying) {
-                this.gameTime.setMinutes(this.gameTime.getMinutes() + 1);
-                this.emit('tick', this.formatTime()); // Broadcast waktu ke semua sistem
+                this.gameTime.setSeconds(this.gameTime.getSeconds() + 1);
+                this.emit('tick', this.formatTime()); 
             }
         }, 1000); 
     }
 
     formatTime() {
-        return this.gameTime.toTimeString().substring(0, 5); // Ambil "HH:MM"
+        return this.gameTime.toTimeString().substring(0, 8);
     }
 }
 

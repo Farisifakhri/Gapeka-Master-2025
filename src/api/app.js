@@ -4,80 +4,82 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 
-// --- IMPORT LOGIC ---
 const gameLoop = require('../core/GameLoop');
 const InterlockingSystem = require('../core/Interlocking');
-const TrainManager = require('../core/TrainManager'); // <--- PENTING
+const TrainManager = require('../core/TrainManager');
+const stationData = require('../../data/stations.json');
 
-// --- LOAD DATA ---
-const stationData = require('../../data/stations.json'); 
-const interlockingTable = require('../../data/interlocking_table.json');
-
-// --- SETUP SERVER ---
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../../public'))); // Serve Frontend
+app.use(express.static(path.join(__dirname, '../../public')));
 
-// Route Peredam Error Chrome
-app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => res.sendStatus(204));
+// INIT SYSTEM
+const interlocking = new InterlockingSystem(stationData);
+const trainManager = new TrainManager(io, stationData, interlocking);
 
-// --- INISIALISASI GAME ENGINE ---
-// 1. Sistem Interlocking (Pengatur Sinyal)
-const vpi = new InterlockingSystem(stationData);
-// 2. Train Manager (Pengatur Kereta) - Masukkan 'io' dan 'stationData'
-const trainManager = new TrainManager(io, stationData);
-
-// --- SOCKET IO (REALTIME) ---
+// SOCKET
 io.on('connection', (socket) => {
-    console.log('>>> User Frontend Masuk <<<');
-    socket.emit('init_station', stationData);
+    socket.emit('init_signals', stationData.signals); 
 });
 
-// --- GAMELOOP (DETAK JANTUNG GAME) ---
+// GAMELOOP
 gameLoop.on('tick', (gameTime) => {
-    // 1. Kirim Waktu ke Frontend
     io.emit('time_update', { time: gameTime });
-    
-    // 2. Update Pergerakan Kereta
     trainManager.onTick(gameTime);
 });
 
-// --- API ENDPOINTS (TOMBOL-TOMBOL) ---
-app.post('/api/route', (req, res) => {
-    const { routeId } = req.body;
-    const result = vpi.requestRoute(routeId); // Minta Interlocking
+// --- API INTERLOCKING (LOGIC SINYAL BERANTAI) ---
+app.post('/api/interlocking/request-route', (req, res) => {
+    const { routeId, forcedAspect } = req.body; 
+    let aspectToSet = forcedAspect; // 1. Prioritas Utama: Perintah Suara
 
-    if (result.success) {
-        // Cari warna sinyal dari tabel
-        const routeDef = interlockingTable.routes[routeId];
-        const color = routeDef ? routeDef.signal_aspect : 'GREEN';
-
-        // Kirim update ke Frontend
-        io.emit('signal_update', { routeId, status: 'SECURE', signalAspect: color });
+    // Jika tidak ada perintah suara (AUTO MODE), gunakan logika sistem
+    if (!aspectToSet) {
         
-        // Kirim juga update track (reserved/occupied)
-        io.emit('track_update', stationData.tracks);
+        // A. LOGIKA SINYAL KELUAR (Cek Waktu Keberangkatan)
+        if (routeId.includes('OUT')) {
+            const trackId = routeId.includes('J1') ? 1 : 2;
+            // Panggil TrainManager untuk hitung selisih waktu
+            aspectToSet = trainManager.getDepartureAspect(trackId);
+        } 
+        
+        // B. LOGIKA SINYAL MASUK (Sinyal Berantai / Distant Signal)
+        else if (routeId.includes('IN')) {
+            // Cek Sinyal Keluar di depannya
+            const trackId = routeId.includes('J1') ? 1 : 2;
+            const outSignalName = `S_OUT_J${trackId}`;
+            const outSignalAspect = stationData.signals[outSignalName].aspect;
 
+            // RUMUS BERANTAI:
+            if (outSignalAspect === 'RED') {
+                // Depan Merah -> Masuk Kuning (Hati-hati)
+                aspectToSet = 'YELLOW';
+                console.log(`[LOGIC] Sinyal Keluar J${trackId} Tertutup. Sinyal Masuk set KUNING.`);
+            } else {
+                // Depan Hijau -> Masuk Hijau (Aman)
+                aspectToSet = 'GREEN';
+                console.log(`[LOGIC] Sinyal Keluar J${trackId} Terbuka. Sinyal Masuk set HIJAU.`);
+            }
+        }
+    }
+
+    // Eksekusi ke Interlocking Core
+    const result = interlocking.requestRoute(routeId, aspectToSet);
+    
+    if (result.success) {
+        io.emit('signal_update', result.signalUpdate);
         res.json({ status: 'success', message: result.message });
     } else {
         res.status(409).json({ status: 'failed', reason: result.reason });
     }
 });
 
-app.post('/api/release-route', (req, res) => {
-    const { routeId } = req.body;
-    vpi.releaseRoute(routeId);
-    io.emit('signal_update', { routeId, status: 'IDLE', signalAspect: 'RED' });
-    res.json({ status: 'success' });
-});
-
-// --- START SERVER ---
 const PORT = 3000;
 server.listen(PORT, () => {
-    console.log(`Server PPKA siap di http://localhost:${PORT}`);
+    console.log(`Panel PPKA Cawang siap di http://localhost:${PORT}`);
     gameLoop.start(); 
 });
