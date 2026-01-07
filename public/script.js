@@ -1,20 +1,29 @@
+// public/script.js
+
 const socket = io();
 
-// --- AUDIO ASSETS ---
+// --- SETUP AUDIO ---
 const audioAmbience = document.getElementById('sfx-ambience');
+// const audioAnnounce = document.getElementById('sfx-announce'); // Jika ada file announcer
 
-// --- VOICE RECOGNITION SETUP ---
+// --- SETUP VOICE RECOGNITION ---
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
 recognition.lang = 'id-ID'; 
 recognition.continuous = true; 
 recognition.interimResults = false;
 
-// --- START SYSTEM ---
+// --- FUNGSI START SYSTEM (Dipanggil tombol Start) ---
 function startSystem() {
     document.getElementById('start-overlay').style.display = 'none';
-    audioAmbience.volume = 0.5; 
-    audioAmbience.play().catch(e => console.log("Audio Error:", e));
+    
+    // Play Ambience (Suara Stasiun)
+    if(audioAmbience) {
+        audioAmbience.volume = 0.2; 
+        audioAmbience.loop = true;
+        audioAmbience.play().catch(e => console.log("Audio Error:", e));
+    }
+    
     startListening();
 }
 
@@ -25,6 +34,7 @@ function startListening() {
     } catch (e) { console.error("Mic Error:", e); }
 }
 
+// Handler Hasil Suara
 recognition.onresult = (event) => {
     const last = event.results.length - 1;
     const command = event.results[last][0].transcript.toLowerCase();
@@ -32,9 +42,11 @@ recognition.onresult = (event) => {
     updateMicUI(true, `CMD: "${command}"`);
     processVoiceCommand(command);
     
+    // Reset status UI setelah 2 detik
     setTimeout(() => updateMicUI(true, "LISTENING..."), 2000);
 };
 
+// Auto Restart Mic kalau mati (Biar always listening)
 recognition.onend = () => { recognition.start(); };
 
 function updateMicUI(isActive, text) {
@@ -49,116 +61,163 @@ function updateMicUI(isActive, text) {
     }
 }
 
-// === LOGIKA PEMROSESAN SUARA ===
+// --- LOGIKA PEMROSESAN SUARA ---
 function processVoiceCommand(cmd) {
     let routeId = null;
-    let forcedAspect = null; // null = Auto (ikut sistem)
+    let forcedAspect = null;
 
-    // 1. CEK WARNA/ASPEK (Override)
-    if (cmd.includes('kuning') || cmd.includes('hati') || cmd.includes('semboyan 6') || cmd.includes('enam')) {
-        forcedAspect = 'YELLOW';
-    } 
-    else if (cmd.includes('hijau') || cmd.includes('aman') || cmd.includes('semboyan 5') || cmd.includes('lima')) {
-        forcedAspect = 'GREEN';
-    }
+    // Deteksi Warna Sinyal
+    if (cmd.includes('kuning') || cmd.includes('hati')) forcedAspect = 'YELLOW';
+    else if (cmd.includes('hijau') || cmd.includes('aman')) forcedAspect = 'GREEN';
+    else if (cmd.includes('merah') || cmd.includes('stop')) forcedAspect = 'RED';
 
-    // 2. CEK JALUR & AKSI
-    // Jalur 1
+    // Deteksi Jalur & Aksi
     if (cmd.includes('satu') || cmd.includes('1')) {
         if (cmd.includes('masuk')) routeId = 'ROUTE_IN_J1';
         else if (cmd.includes('berangkat') || cmd.includes('keluar')) routeId = 'ROUTE_OUT_J1';
     }
-    // Jalur 2
     else if (cmd.includes('dua') || cmd.includes('2')) {
         if (cmd.includes('masuk')) routeId = 'ROUTE_IN_J2';
         else if (cmd.includes('berangkat') || cmd.includes('keluar')) routeId = 'ROUTE_OUT_J2';
     }
 
-    // 3. KIRIM KE API
     if (routeId) {
-        console.log(`🎤 Suara: ${routeId} | Aspek: ${forcedAspect || 'AUTO'}`);
         reqRoute(routeId, forcedAspect);
     }
 }
 
-// --- SOCKET LOGIC ---
+// --- KOMUNIKASI SOCKET.IO ---
 
+// 1. Update Jam Digital
 socket.on('time_update', (data) => {
     document.getElementById('clock').innerText = data.time;
 });
 
+// 2. Inisialisasi Lampu Sinyal
 socket.on('init_signals', (signals) => {
     for (const [key, val] of Object.entries(signals)) {
-        updateLampUI(key, val.aspect);
+        updateLampUI(key, val.status);
     }
 });
 
+// 3. Update Lampu Sinyal (Realtime)
 socket.on('signal_update', (data) => {
-    updateLampUI(data.id, data.aspect);
+    updateLampUI(data.id, data.status);
 });
 
-function updateLampUI(signalId, aspect) {
+// Helper Ganti Warna Lampu di UI
+function updateLampUI(signalId, status) {
     const lampEl = document.getElementById(`lamp-${signalId}`);
-    if (lampEl) lampEl.className = `lamp ${aspect}`;
+    if (lampEl) {
+        // Hapus kelas lama, tambah kelas baru (RED/YELLOW/GREEN)
+        lampEl.className = `lamp ${status}`;
+        
+        // Efek Glow
+        if (status === 'GREEN') lampEl.style.boxShadow = "0 0 15px #2ecc71";
+        else if (status === 'YELLOW') lampEl.style.boxShadow = "0 0 15px #f1c40f";
+        else lampEl.style.boxShadow = "none";
+    }
 }
 
-// REQUEST ROUTE (Kirim aspek jika ada)
+// Fungsi Request Rute ke Server (Fetch API)
 async function reqRoute(routeId, aspect = null) {
     try {
-        // Efek visual tombol (biar kelihatan dipencet)
-        console.log("Mengirim Request:", routeId, aspect);
-        
         const payload = { routeId };
         if (aspect) payload.forcedAspect = aspect;
-
-        const res = await fetch('/api/interlocking/request-route', {
+        
+        await fetch('/api/interlocking/request-route', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload)
         });
-        const d = await res.json();
-        if(d.status === 'failed') console.warn(d.reason);
+        
+        // Feedback visual sederhana di console client
+        console.log(`Requested: ${routeId} -> ${aspect || 'AUTO'}`);
     } catch(e) { console.error(e); }
 }
 
+// ... (Kode Socket Init sama) ...
+
+// 4. UPDATE TABEL JADWAL (REVISI)
 socket.on('train_update', (trains) => {
     const tbody = document.getElementById('schedule-body');
     tbody.innerHTML = '';
 
-    if (trains.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#555;">TIDAK ADA AKTIVITAS KERETA</td></tr>';
+    const displayTrains = trains.slice(0, 3);
+
+    if (displayTrains.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:#666;">TIDAK ADA JADWAL</td></tr>`;
         return;
     }
 
-    trains.forEach(t => {
+    displayTrains.forEach((t, index) => {
         const tr = document.createElement('tr');
-        let loadColor = '#2ecc71'; 
-        if(t.passengerLoad > 40) loadColor = '#f1c40f'; 
-        if(t.passengerLoad > 80) loadColor = '#ff6b6b'; 
+        
+        let rowStyle = index === 0 ? 
+            'background: rgba(46, 204, 113, 0.15); border-left: 5px solid #2ecc71;' : 
+            'opacity: 0.7;';
+        
+        let fontStyle = index === 0 ? 'font-size: 1.2rem; font-weight: bold;' : 'font-size: 1rem;';
 
-        let stClass = '';
-        if(t.status === 'APPROACHING') stClass = 'st-APPROACHING';
-        if(t.status === 'DWELLING') stClass = 'st-DWELLING';
-        if(t.status === 'DEPARTING') stClass = 'st-DEPARTING';
+        // WARNA SPEED
+        let speed = Math.round(t.currentSpeedKmh || 0);
+        let speedColor = '#fff';
+        if(speed === 0) speedColor = '#e74c3c'; // Merah kalo berhenti
+        else if(speed > 70) speedColor = '#f1c40f'; // Kuning kalo ngebut
 
+        // BADGE SF
+        let sfClass = t.sf || 'SF8';
+        let badgeColor = 'badge-sf8';
+        if(sfClass === 'SF12') badgeColor = 'badge-sf12';
+        if(sfClass === 'SF10') badgeColor = 'badge-sf10';
+
+        tr.style = rowStyle;
         tr.innerHTML = `
-            <td style="font-weight:bold; color:#fff;">${t.ka_id}</td>
-            <td style="font-size:0.9rem; color:#aaa;">${t.name}</td>
-            <td><span style="background:#333; padding:2px 6px; border-radius:3px;">${t.track_dest}</span></td>
-            <td><span class="speed-box">${t.displaySpeed}</span> <span class="speed-unit">km/h</span></td>
+            <td style="color:#fff; ${fontStyle}">${t.train_id}</td>
+            
+            <td style="${fontStyle}">
+                <div style="margin-bottom: 2px;">${t.route}</div>
+                <div style="font-size:0.75em; color:#f39c12; letter-spacing: 0.5px;">
+                    <i class="fas fa-map-marker-alt" style="margin-right:4px;"></i>${t.info || 'Dilintas'}
+                </div>
+            </td>
+            
+            <td style="text-align:center;">
+                <span style="background:#444; color:#fff; padding:4px 8px; border-radius:4px; font-weight:bold;">${t.track_id}</span>
+            </td>
+            
             <td>
-                <div style="display:flex; justify-content:space-between;">
-                    <span class="load-text" style="color:${loadColor}">${t.passengerLoad}%</span>
-                </div>
-                <div class="load-bar-container">
-                    <div class="load-bar" style="width:${t.passengerLoad}%; background:${loadColor};"></div>
+                <span class="speed-box" style="color:${speedColor}">${speed}</span> 
+                <span class="speed-unit">km/h</span>
+            </td>
+            
+            <td>
+                <div style="display:flex; flex-direction:column;">
+                    <span style="font-size:0.9em; color:#aaa;">MENUJU:</span>
+                    <span style="font-weight:bold; color:#fff;">${t.nextStationName || '-'}</span>
+                    <span style="font-size:0.8em; color:#2ecc71;">${t.nextStationDist || 0} km lagi</span>
                 </div>
             </td>
-            <td style="font-family:'Share Tech Mono'; font-size:1rem;">
-                Arr: ${t.schedule.arrival}<br> Dep: ${t.schedule.departure}
+            
+            <td style="font-family:'Share Tech Mono'; color:#f1c40f; ${fontStyle}">
+                ${t.schedule_departure || t.schedule_arrival}
             </td>
-            <td class="${stClass}">${t.info}</td>
+            
+            <td>
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <span style="font-weight:bold; color:${t.status === 'DWELLING' ? '#e74c3c' : '#3498db'}">
+                        ${t.status === 'DWELLING' ? 'BERHENTI' : t.status}
+                    </span>
+                    <span class="badge-sf ${badgeColor}" style="font-size:0.7em; width:fit-content;">${sfClass}</span>
+                </div>
+            </td>
         `;
         tbody.appendChild(tr);
     });
+
+    for(let i = displayTrains.length; i < 3; i++) {
+         const tr = document.createElement('tr');
+         tr.innerHTML = `<td colspan="7" style="height:65px; background:rgba(0,0,0,0.1); border-bottom: 1px solid #333;">&nbsp;</td>`;
+         tbody.appendChild(tr);
+    }
 });

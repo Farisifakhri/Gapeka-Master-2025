@@ -1,25 +1,20 @@
 {
-  "station_code": "CW",
-  "name": "Stasiun Cawang",
-  "interlocking_type": "SSI-Siemens",
-  "tracks": [
-    { 
-      "id": 1, 
-      "name": "Jalur 1 (Ke MRI/JAKK)", 
-      "hasPlatform": true, 
-      "status": "FREE" 
-    },
-    { 
-      "id": 2, 
-      "name": "Jalur 2 (Ke BOO/NMO)", 
-      "hasPlatform": true, 
-      "status": "FREE" 
-    }
-  ],
+  "station_name": "Cawang",
   "signals": {
-    "S_IN_J1": { "id": "S_IN_J1", "name": "Masuk J1 (Dr Kalibata)", "aspect": "RED" },
-    "S_OUT_J1": { "id": "S_OUT_J1", "name": "Keluar J1", "aspect": "RED" },
-    "S_IN_J2": { "id": "S_IN_J2", "name": "Masuk J2 (Dr Tebet)", "aspect": "RED" },
-    "S_OUT_J2": { "id": "S_OUT_J2", "name": "Keluar J2", "aspect": "RED" }
+    "J1_PRE": { "id": "J1_PRE", "status": "GREEN", "type": "PRE", "label": "Muka J1", "nextSignal": "J1_IN", "blockId": "TRACK_1_PRE" },
+    "J1_IN":  { "id": "J1_IN",  "status": "RED",   "type": "ENTRY", "label": "Masuk J1", "nextSignal": "J1_OUT", "linkedExit": "J1_OUT", "blockId": "TRACK_1" },
+    "J1_OUT": { "id": "J1_OUT", "status": "RED",   "type": "EXIT", "label": "Keluar J1", "nextSignal": "J1_BLK", "blockId": "BLOCK_NEXT" },
+    "J1_BLK": { "id": "J1_BLK", "status": "GREEN", "type": "BLOCK", "label": "Blok J1", "blockId": "BLOCK_FAR" },
+
+    "J2_PRE": { "id": "J2_PRE", "status": "GREEN", "type": "PRE", "label": "Muka J2", "nextSignal": "J2_IN", "blockId": "TRACK_2_PRE" },
+    "J2_IN":  { "id": "J2_IN",  "status": "RED",   "type": "ENTRY", "label": "Masuk J2", "nextSignal": "J2_OUT", "linkedExit": "J2_OUT", "blockId": "TRACK_2" },
+    "J2_OUT": { "id": "J2_OUT", "status": "RED",   "type": "EXIT", "label": "Keluar J2", "nextSignal": "J2_BLK", "blockId": "BLOCK_NEXT" },
+    "J2_BLK": { "id": "J2_BLK", "status": "GREEN", "type": "BLOCK", "label": "Blok J2", "blockId": "BLOCK_FAR" }
+  },
+  "routes": {
+    "ROUTE_IN_J1": { "signals": ["J1_IN"], "target": "TRACK_1" },
+    "ROUTE_IN_J2": { "signals": ["J2_IN"], "target": "TRACK_2" },
+    "ROUTE_OUT_J1": { "signals": ["J1_OUT"], "target": "BLOCK_NEXT" },
+    "ROUTE_OUT_J2": { "signals": ["J2_OUT"], "target": "BLOCK_NEXT" }
   }
 }

@@ -3,7 +3,7 @@
     "ROUTE_IN_J1": {
       "id": "ROUTE_IN_J1",
       "description": "Rute Masuk Jalur 1 (Arah JAKK)",
-      "signal_id": "S_IN_J1",
+      "signal_id": "J1_IN",
       "target_track": 1,
       "aspect": "YELLOW",
       "duration": 10
@@ -11,7 +11,7 @@
     "ROUTE_OUT_J1": {
       "id": "ROUTE_OUT_J1",
       "description": "Rute Keluar Jalur 1 (Arah JAKK)",
-      "signal_id": "S_OUT_J1",
+      "signal_id": "J1_OUT",
       "target_track": 1,
       "aspect": "GREEN",
       "duration": 5
@@ -19,7 +19,7 @@
     "ROUTE_IN_J2": {
       "id": "ROUTE_IN_J2",
       "description": "Rute Masuk Jalur 2 (Arah BOO)",
-      "signal_id": "S_IN_J2",
+      "signal_id": "J2_IN",
       "target_track": 2,
       "aspect": "YELLOW",
       "duration": 10
@@ -27,7 +27,7 @@
     "ROUTE_OUT_J2": {
       "id": "ROUTE_OUT_J2",
       "description": "Rute Keluar Jalur 2 (Arah BOO)",
-      "signal_id": "S_OUT_J2",
+      "signal_id": "J2_OUT",
       "target_track": 2,
       "aspect": "GREEN",
       "duration": 5

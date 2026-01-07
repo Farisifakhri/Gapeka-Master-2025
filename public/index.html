@@ -3,138 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PPKA Stasiun Cawang (CW)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Gapeka Master 2025 - Cawang Control</title>
+    
     <link rel="stylesheet" href="style.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
-    <div id="start-overlay">
-        <div class="start-box">
-            <h1>SYSTEM BOOT</h1>
-            <p>Klik untuk mengaktifkan Audio & Voice Command</p>
-            <button onclick="startSystem()">AKTIFKAN SISTEM</button>
-        </div>
+    <div id="start-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:#fff;">
+        <h1 style="font-family:'Share Tech Mono'; margin-bottom:20px; text-shadow:0 0 10px #2ecc71;">GAPEKA MASTER 2025</h1>
+        <p>PPKA STASIUN CAWANG (CW)</p>
+        <button onclick="startSystem()" style="padding:15px 40px; font-size:1.2rem; background:#2ecc71; border:none; color:#000; font-weight:bold; cursor:pointer; border-radius:5px; margin-top:20px;">
+            <i class="fas fa-power-off"></i> NYALAKAN SISTEM
+        </button>
     </div>
 
-    <audio id="sfx-ambience" loop>
-        <source src="assets/station_ambience.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="sfx-bell">
-        <source src="assets/bell_in.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="sfx-whistle">
-        <source src="assets/whistle.mp3" type="audio/mpeg">
-    </audio>
-
-    <div class="header">
-        <div class="header-left">
-            <div class="logo-area">
-                <div class="logo-box">KAI</div>
-                <div class="logo-text">TRAIN CONTROL SYSTEM</div>
-            </div>
-            <div class="stn-details">
-                <h1>STASIUN CAWANG (CW)</h1>
-                <span>DAOP 1 JAKARTA - VOICE ACTIVATED</span>
-            </div>
-        </div>
-        
-        <div class="voice-status">
-            <div id="mic-icon">🎙️</div>
-            <div id="voice-text">VOICE: OFF</div>
-        </div>
-
-        <div class="header-right">
-            <div class="clock-label">SYSTEM TIME</div>
-            <div id="clock">00:00:00</div>
-        </div>
-    </div>
-
-    <div class="main-dashboard">
-        
-        <div class="panel interlocking-panel">
-            <div class="panel-header">
-                <span>🚦 SIGNAL CONTROL</span>
-                <div class="led-indicator green">ONLINE</div>
-            </div>
-            
-            <div class="control-grid">
-                <div class="track-card">
-                    <div class="track-head">
-                        <span class="track-num">JALUR 1</span>
-                        <span class="track-dir">KE MANGGARAI</span>
-                    </div>
-                    <div class="signal-wrapper">
-                        <div class="signal-block">
-                            <div class="signal-lamp"><div id="lamp-S_IN_J1" class="lamp RED"></div></div>
-                            <button onclick="reqRoute('ROUTE_IN_J1')">MASUK (J1)</button>
-                        </div>
-                        <div class="arrow-indicator">⬆️</div>
-                        <div class="signal-block">
-                            <div class="signal-lamp"><div id="lamp-S_OUT_J1" class="lamp RED"></div></div>
-                            <button onclick="reqRoute('ROUTE_OUT_J1')">KELUAR (J1)</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="track-card">
-                    <div class="track-head">
-                        <span class="track-num">JALUR 2</span>
-                        <span class="track-dir">KE BOGOR</span>
-                    </div>
-                    <div class="signal-wrapper">
-                        <div class="signal-block">
-                            <div class="signal-lamp"><div id="lamp-S_IN_J2" class="lamp RED"></div></div>
-                            <button onclick="reqRoute('ROUTE_IN_J2')">MASUK (J2)</button>
-                        </div>
-                        <div class="arrow-indicator">⬇️</div>
-                        <div class="signal-block">
-                            <div class="signal-lamp"><div id="lamp-S_OUT_J2" class="lamp RED"></div></div>
-                            <button onclick="reqRoute('ROUTE_OUT_J2')">KELUAR (J2)</button>
-                        </div>
-                    </div>
+    <div class="container">
+        <header>
+            <div class="station-info">
+                <h1><i class="fas fa-train"></i> STASIUN CAWANG (CW)</h1>
+                <div class="voice-status">
+                    <div class="mic-dot"></div>
+                    <span id="voice-text">VOICE: OFF</span>
                 </div>
             </div>
+            <div class="clock-panel">
+                <div id="clock">00:00:00</div>
+            </div>
+        </header>
+
+        <div class="signal-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0; color:#fff; font-family:'Share Tech Mono';"><i class="fas fa-tower-broadcast"></i> CAWANG (CW) VDU</h3>
+                <span style="font-size:0.8em; color:#aaa;">STATUS: <span style="color:#2ecc71">ONLINE</span></span>
+            </div>
+        
+            <div style="color:#f39c12; font-size:0.8rem; margin-bottom:5px; font-weight:bold;">
+                JALUR 1 (KE JAKARTA KOTA) <i class="fas fa-arrow-left"></i>
+            </div>
             
-            <div class="voice-help">
-                <small>KATA KUNCI SUARA:</small>
-                <ul>
-                    <li>"Jalur Satu Masuk"</li>
-                    <li>"Jalur Satu Berangkat"</li>
-                    <li>"Jalur Dua Masuk"</li>
-                    <li>"Jalur Dua Berangkat"</li>
-                </ul>
+            <div class="track-row">
+                <div class="rail-line"></div>
+                <div class="platform-area">PERON 1</div>
+        
+                <div class="signal-wrapper">
+                    <div class="lamp GREEN" id="lamp-J1_BLK"></div>
+                    <span class="sig-label">BLK 101</span>
+                </div>
+        
+                <div class="signal-wrapper">
+                    <div class="lamp GREEN" id="lamp-J1_PRE"></div>
+                    <span class="sig-label">J1 PRE</span>
+                </div>
+        
+                <div class="signal-wrapper signal-btn" onclick="reqRoute('ROUTE_IN_J1')">
+                    <div class="lamp RED" id="lamp-J1_IN"></div>
+                    <span class="sig-label">MASUK</span>
+                </div>
+        
+                <div class="signal-wrapper signal-btn" onclick="reqRoute('ROUTE_OUT_J1')">
+                    <div class="lamp RED" id="lamp-J1_OUT"></div>
+                    <span class="sig-label">KELUAR</span>
+                </div>
             </div>
-
+        
+        
+            <div style="color:#3498db; font-size:0.8rem; margin-bottom:5px; margin-top:30px; font-weight:bold;">
+                JALUR 2 (KE BOGOR) <i class="fas fa-arrow-right"></i>
+            </div>
+            
+            <div class="track-row">
+                <div class="rail-line"></div>
+                <div class="platform-area">PERON 2</div>
+        
+                <div class="signal-wrapper">
+                    <div class="lamp GREEN" id="lamp-J2_PRE"></div>
+                    <span class="sig-label">J2 PRE</span>
+                </div>
+        
+                <div class="signal-wrapper signal-btn" onclick="reqRoute('ROUTE_IN_J2')">
+                    <div class="lamp RED" id="lamp-J2_IN"></div>
+                    <span class="sig-label">MASUK</span>
+                </div>
+        
+                <div class="signal-wrapper signal-btn" onclick="reqRoute('ROUTE_OUT_J2')">
+                    <div class="lamp RED" id="lamp-J2_OUT"></div>
+                    <span class="sig-label">KELUAR</span>
+                </div>
+        
+                <div class="signal-wrapper">
+                    <div class="lamp GREEN" id="lamp-J2_BLK"></div>
+                    <span class="sig-label">BLK 102</span>
+                </div>
+            </div>
         </div>
 
-        <div class="panel schedule-panel">
-            <div class="panel-header">
-                <span>🖥️ LIVE TRAIN MONITORING</span>
-                <span>AUTO-REFRESH: 1s</span>
-            </div>
-            <div class="table-container">
-                <table class="live-table">
-                    <thead>
-                        <tr>
-                            <th width="10%">KA</th>
-                            <th width="15%">Relasi</th>
-                            <th width="8%">Jalur</th>
-                            <th width="12%">Kecepatan</th>
-                            <th width="15%">Okupansi</th>
-                            <th width="10%">Jadwal</th>
-                            <th width="30%">Status & Info</th>
-                        </tr>
-                    </thead>
-                    <tbody id="schedule-body">
-                        </tbody>
-                </table>
-            </div>
+        <div class="schedule-panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>KA</th>
+                        <th width="25%">RUTE / POSISI</th>
+                        <th>JALUR</th>
+                        <th>KECEPATAN</th>
+                        <th width="20%">NEXT STATION</th>
+                        <th>JADWAL</th>
+                        <th>STATUS</th>
+                    </tr>
+                </thead>
+                <tbody id="schedule-body">
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding:20px;">Menunggu Data Server...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-
     </div>
+
+    <audio id="sfx-ambience" src="assets/station_ambience.mp3" loop></audio>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="script.js"></script> 
+    <script src="script.js"></script>
 </body>
 </html>
