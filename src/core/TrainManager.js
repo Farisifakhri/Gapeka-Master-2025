@@ -8,7 +8,7 @@ class TrainManager {
         this.interlocking = interlocking; 
         this.activeTrains = [];
         this.completedTrains = [];
-        this.gameTimeStr = "04:30:00"; 
+        this.gameTimeStr = "05:00:00"; 
     }
 
     updateTrains(gameTime, interlocking) {
@@ -17,13 +17,10 @@ class TrainManager {
         
         this.spawnCheck(gameTime);
         this.updatePhysics();
+        this.checkAudioTriggers(); // <-- FITUR BARU
     }
 
-    log(message) {
-        // console.log(`[${this.gameTimeStr}] ${message}`);
-    }
-
-    // --- 1. SPAWN CHECK (TETAP SAMA) ---
+    // --- 1. SPAWN LOGIC ---
     spawnCheck(currentTime) {
         const currentSeconds = this.timeToSeconds(currentTime);
 
@@ -33,16 +30,19 @@ class TrainManager {
 
             const schAtCawang = this.timeToSeconds(train.schedule_arrival);
             
-            // Spawn +/- 60 menit dari jadwal Cawang
-            if (currentSeconds >= schAtCawang - 3600 && currentSeconds < schAtCawang + 300) {
-                let timeDiff = schAtCawang - currentSeconds; 
+            // Logic Lintas Hari (00:xx)
+            let diff = schAtCawang - currentSeconds;
+            if (schAtCawang < 10800 && currentSeconds > 75600) { 
+                 diff += 86400; // Jadwal pagi (besok), sekarang malam
+            }
+
+            // Spawn Window (+/- 60 Menit)
+            if (diff >= -3600 && diff <= 300) {
                 let avgSpeedMs = 13.8; 
-                let distanceDiffKm = (timeDiff * avgSpeedMs) / 1000; 
+                let distanceDiffKm = (diff * avgSpeedMs) / 1000; 
                 
                 let startKm;
-                const trackId = train.track_id;
-
-                if (trackId === 1) { 
+                if (train.track_id === 1) { 
                     startKm = 13.7 + distanceDiffKm;
                     if (startKm < 13.9) return; 
                 } else {
@@ -68,63 +68,68 @@ class TrainManager {
                     nextStationDist: 0,
                     arrivalStatus: null,
                     dwellTimer: 0,
-                    npcDwellTimer: 0, // Timer buat stasiun selain Cawang
-                    isHeldAtBogor: false, // Flag khusus Bogor
-                    remove: false
+                    npcDwellTimer: 0,
+                    isHeldAtBogor: false,
+                    remove: false,
+                    
+                    // Flags Audio & UI
+                    playedAnnounceArr: false,
+                    playedAnnounceDep: false,
+                    playedAnnounceLS: false,
+                    hasStoppedAtCawang: false,
+                    hideOnSchedule: false
                 });
                 this.broadcast();
             }
         });
     }
 
-    // --- 2. PHYSICS ENGINE (DENGAN TASPAT & AUTO STOP) ---
+    // --- 2. PHYSICS & MOVEMENT ---
     updatePhysics() {
         let changed = false;
         
         this.activeTrains.forEach(t => {
-            // A. UPDATE POSISI
-            // Kalo lagi berhenti (DWELLING / NPC_STOP), speed 0
             if (t.status === 'NPC_STOP' || t.status === 'DWELLING') t.currentSpeedKmh = 0;
 
             let deltaKm = (t.currentSpeedKmh / 3600); 
-            
-            if (t.track_id === 1) t.currentKm -= deltaKm; // Arah Kota
-            else t.currentKm += deltaKm; // Arah Bogor
+            if (t.track_id === 1) t.currentKm -= deltaKm; 
+            else t.currentKm += deltaKm; 
 
-            // B. HITUNG DATA SPASIAL
             const nearestStn = MapData.getNearestStation(t.currentKm, t.isNambo);
             const distToNearest = Math.abs(t.currentKm - nearestStn.km);
             const distToCawang = Math.abs(t.currentKm - 13.7);
             const isNearCawang = distToCawang < 2.5; 
 
-            // Update Info Next Station
+            // Update Next Station Info
             const targetStn = this.findNextStation(t);
             if (targetStn) {
                 t.nextStationName = targetStn.name;
                 t.nextStationDist = Math.abs(t.currentKm - targetStn.km).toFixed(1);
             }
 
-            // --- LOGIKA UTAMA ---
+            // --- LOGIKA HAPUS JADWAL (AUTO-HIDE) ---
+            if (t.status === 'RUNNING' && distToCawang > 0.5 && t.hasStoppedAtCawang) {
+                t.hideOnSchedule = true; 
+            }
+            if (t.status === 'DWELLING' && distToCawang < 0.1) {
+                t.hasStoppedAtCawang = true;
+            }
 
-            // 1. CEK APAKAH INI CAWANG? (PLAYER CONTROL)
+            // --- STATE MACHINE ---
             if (isNearCawang) {
                 this.handlePlayerStation(t, distToCawang);
-            } 
-            // 2. JIKA BUKAN CAWANG (AUTO / NPC LOGIC)
-            else {
+            } else {
                 this.handleNPCStation(t, nearestStn, distToNearest);
             }
 
-            // 3. TERAPKAN TASPAT (PEMBATASAN KECEPATAN)
-            // Ini dijalankan kalau kereta sedang bergerak (RUNNING/APPROACHING)
+            // --- TASPAT ---
             if (t.status !== 'DWELLING' && t.status !== 'NPC_STOP') {
                 const limit = this.getSpeedLimit(t, nearestStn.id, distToNearest);
                 this.adjustSpeed(t, limit);
             }
 
-            // 4. CLEANUP
+            // Cleanup
             if (t.currentKm < -1 || t.currentKm > 52) t.remove = true; 
-            
             changed = true;
         });
 
@@ -136,106 +141,72 @@ class TrainManager {
         if (changed) this.broadcast();
     }
 
-    // --- LOGIKA TASPAT (SPEED LIMITS) ---
+    // --- 3. AUDIO TRIGGER ---
+    checkAudioTriggers() {
+        const currSeconds = this.timeToSeconds(this.gameTimeStr);
+
+        this.activeTrains.forEach(t => {
+            const schArr = this.timeToSeconds(t.schedule_arrival);
+            const isGoods = t.train_id.includes("KA") || t.train_id.includes("KLB");
+
+            // Fix Cross Day calc for audio
+            let diffArr = schArr - currSeconds;
+            if (diffArr < -40000) diffArr += 86400; // Jadwal besok
+
+            // A. KRL TIBA (1 Menit Sebelum)
+            if (!isGoods && !t.playedAnnounceArr && diffArr <= 60 && diffArr > 0) {
+                this.io.emit('play_audio', { type: 'ARR_KRL', train: t });
+                t.playedAnnounceArr = true; 
+            }
+
+            // B. KRL BERANGKAT (1 Menit Setelah Lepas)
+            if (!isGoods && !t.playedAnnounceDep && t.hasStoppedAtCawang && t.status === 'RUNNING') {
+                this.io.emit('play_audio', { type: 'DEP_KRL', train: t });
+                t.playedAnnounceDep = true;
+            }
+
+            // C. KA BARANG/LS (2 Menit Sebelum)
+            if (isGoods && !t.playedAnnounceLS && diffArr <= 120 && diffArr > 0) {
+                this.io.emit('play_audio', { type: 'ARR_LS', train: t });
+                t.playedAnnounceLS = true;
+            }
+        });
+    }
+
+    // --- HELPER LOGIC ---
     getSpeedLimit(t, nearestId, distToNearest) {
         let km = t.currentKm;
-        let limit = 80; // Default Speed Lintas
-
-        // 1. LINTAS JAKK - JAY (KM 0 - 1.4) -> Max 40
-        if (km >= 0 && km <= 1.5) return 40;
-
-        // 2. GAMBIR (KM 5.8) -> Sinyal Kuning/Belok -> Max 40-70
-        // Kita simulasikan melambat saat melintas Gambir
+        if (km >= 0 && km <= 1.5) return 40; // JAKK-JAY
         if (nearestId === 'GMR' && distToNearest < 0.8) return 45;
-
-        // 3. MANGGARAI (KM 9.9) -> Max 40-50
         if (nearestId === 'MRI' && distToNearest < 1.0) return 40;
-
-        // 4. PASAR MINGGU (KM 17.0) -> Masuk dibatasi 40
         if (nearestId === 'PSM' && distToNearest < 0.8) return 40;
-
-        // 5. UNIV INDONESIA (KM 24.5) -> Cek Tepat Waktu
-        if (nearestId === 'UI' && distToNearest < 1.0) {
-            // Cek jadwal sederhana (simulasi)
-            // Kalau dia ngebut/lancar, paksa 40.
-            if (t.currentSpeedKmh > 60) return 40; 
-        }
-
-        // 6. AREA DEPOK (DPB - DP) (KM 28.2 - 29.8) -> Max 50
-        // Dari masuk Depok Baru sampai keluar Depok Lama
-        if (km >= 28.0 && km <= 30.5) return 50;
-
-        // 7. CITAYAM (KM 34.8) -> Max 50
+        if (nearestId === 'UI' && distToNearest < 1.0 && t.currentSpeedKmh > 60) return 40;
+        if (km >= 28.0 && km <= 30.5) return 50; // DEPOK AREA
         if (nearestId === 'CTA' && distToNearest < 1.0) return 50;
-
-        // 8. MASUK BOGOR (KM 50.8) -> Max 30 + Tahan Sinyal
-        if (nearestId === 'BOO' && distToNearest < 1.2) {
-            // Khusus Bogor, makin dekat makin pelan
-            if (distToNearest < 0.5) return 20; 
-            return 30;
-        }
-
-        // --- SPEED LINTAS UMUM ---
-        // Jika tidak kena TASPAT khusus, pakai speed normal
+        if (nearestId === 'BOO' && distToNearest < 1.2) return 30;
         return 80; 
     }
 
-    // --- LOGIKA NPC (STASIUN NON-CAWANG) ---
     handleNPCStation(t, nearestStn, dist) {
-        // Jangan berhenti di Gambir (GMR) kecuali KLB tertentu (kita anggap KRL bablas)
-        if (nearestStn.id === 'GMR') {
-            t.status = 'RUNNING';
-            t.info = `Melintas Langsung ${nearestStn.name}`;
-            return;
-        }
-
-        // Logika Berhenti Otomatis
-        // Jika jarak < 50 meter dan belum berhenti
+        if (nearestStn.id === 'GMR') { t.info = `LS Gambir`; return; } // Gambir LS
+        
         if (dist < 0.05 && t.status === 'RUNNING') {
-            
-            // KHUSUS BOGOR: TAHAN 1 MENIT
-            if (nearestStn.id === 'BOO' && !t.isHeldAtBogor) {
-                t.status = 'NPC_STOP';
-                t.npcDwellTimer = 60; // Tahan 1 menit (60 detik)
-                t.isHeldAtBogor = true;
-                t.info = "Menunggu Sinyal Masuk Bogor";
-                return;
-            }
-
-            // Stasiun Biasa: Berhenti 20 detik
             t.status = 'NPC_STOP';
-            t.npcDwellTimer = 20; 
-            t.info = `Berhenti di ${nearestStn.name}`;
+            t.npcDwellTimer = (nearestStn.id === 'BOO' && !t.isHeldAtBogor) ? 60 : 20;
+            if(nearestStn.id === 'BOO') t.isHeldAtBogor = true;
+            t.info = `Berhenti ${nearestStn.name}`;
         }
 
-        // Proses Menunggu (Dwell)
         if (t.status === 'NPC_STOP') {
-            if (t.npcDwellTimer > 0) {
-                t.npcDwellTimer--;
-                if(nearestStn.id === 'BOO') t.info = `Antrian Masuk BOO (${t.npcDwellTimer}s)`;
-                else t.info = `Berhenti ${nearestStn.name} (${t.npcDwellTimer}s)`;
-            } else {
-                // Selesai Berhenti -> Jalan Lagi
+            if (t.npcDwellTimer > 0) t.npcDwellTimer--;
+            else {
                 t.status = 'RUNNING';
-                // Dorong dikit biar gak kejebak loop berhenti di stasiun yg sama
-                if (t.track_id === 1) t.currentKm -= 0.1; 
-                else t.currentKm += 0.1;
-                
-                t.info = `Lepas ${nearestStn.name}`;
+                if (t.track_id === 1) t.currentKm -= 0.1; else t.currentKm += 0.1;
             }
-        } else {
-            // Sedang Lari
-            t.status = 'RUNNING';
-            if (dist < 1.0) t.info = `Mendekati ${nearestStn.name}`;
-            else t.info = `Petak ${nearestStn.name}`;
         }
     }
 
-    // --- LOGIKA PLAYER (STASIUN CAWANG) ---
     handlePlayerStation(t, distToCawang) {
-        // State Machine Cawang (Sama seperti sebelumnya)
-        // RUNNING -> APPROACHING -> ENTERING -> DWELLING -> DEPARTING -> RUNNING
-
         if (t.status === 'RUNNING') t.status = 'APPROACHING';
 
         if (t.status === 'APPROACHING') {
@@ -250,12 +221,10 @@ class TrainManager {
                     if(this.interlocking.signals[sigName]) this.interlocking.signals[sigName].status = 'RED';
                     this.io.emit('signal_update', { id: sigName, status: 'RED' });
                 } else {
-                    // Paksa berhenti di sinyal
                     t.currentSpeedKmh = Math.max(0, t.currentSpeedKmh - 5); 
-                    t.info = `Menunggu Sinyal Masuk Cawang`;
+                    t.info = `Menunggu Sinyal Masuk`;
                 }
             } else {
-                 // Kurangi speed jelang sinyal
                  if(t.currentSpeedKmh > 40) t.currentSpeedKmh -= 1;
             }
         }
@@ -265,14 +234,13 @@ class TrainManager {
                 t.status = 'DWELLING';
                 t.currentSpeedKmh = 0;
                 t.dwellTimer = 25; 
-                t.info = "Berhenti di Cawang";
                 this.checkArrival(t);
             }
         }
         else if (t.status === 'DWELLING') {
             if (t.dwellTimer > 0) {
                 t.dwellTimer--;
-                t.info = `Boarding Cawang... (${t.dwellTimer}s)`;
+                t.info = `Boarding... (${t.dwellTimer})`;
             } else {
                 const sigOut = t.track_id === 1 ? 'J1_OUT' : 'J2_OUT';
                 const signalStatus = this.interlocking.signals[sigOut].status;
@@ -283,18 +251,15 @@ class TrainManager {
                     if(this.interlocking.signals[sigOut]) this.interlocking.signals[sigOut].status = 'RED';
                     this.io.emit('signal_update', { id: sigOut, status: 'RED' });
                 } else {
-                    t.info = "Menunggu Sinyal Keluar Cawang";
+                    t.info = "Tunggu Sinyal Keluar";
                 }
             }
         }
         else if (t.status === 'DEPARTING') {
-            // Akselerasi
             if (t.currentSpeedKmh < 80) t.currentSpeedKmh += 2;
-            // Lepas otoritas Cawang > 1.5 KM
             if (distToCawang > 1.5) {
                 t.status = 'RUNNING';
                 t.currentBlock = 'LINTAS';
-                this.completedTrains.push(t.train_id);
             }
         }
     }
@@ -306,20 +271,16 @@ class TrainManager {
     }
 
     adjustSpeed(train, targetSpeed) {
-        // Akselerasi/Deselerasi Realistis (KRL itu responsif)
-        if (train.currentSpeedKmh < targetSpeed) {
-            train.currentSpeedKmh += 1.0; 
-        } else if (train.currentSpeedKmh > targetSpeed) {
-            // Ngerem lebih pakem daripada ngegas
-            train.currentSpeedKmh -= 1.5; 
-        }
+        if (train.currentSpeedKmh < targetSpeed) train.currentSpeedKmh += 1.0; 
+        else if (train.currentSpeedKmh > targetSpeed) train.currentSpeedKmh -= 1.5; 
     }
 
     checkArrival(t) {
-        // Logic Arrival Cawang (Sama)
         const schArr = this.timeToSeconds(t.schedule_arrival);
         const actArr = this.timeToSeconds(this.gameTimeStr);
-        const diff = actArr - schArr;
+        let diff = actArr - schArr;
+        if (diff < -40000) diff += 86400; 
+
         let status = 'ONTIME';
         if (diff < -120) status = 'EARLY';
         if (diff > 180) status = 'LATE';
@@ -332,9 +293,8 @@ class TrainManager {
         return (parseInt(parts[0]) * 3600) + (parseInt(parts[1]) * 60) + (parts[2] ? parseInt(parts[2]) : 0);
     }
 
-    broadcast() {
-        this.io.emit('train_update', this.activeTrains);
-    }
+    broadcast() { this.io.emit('train_update', this.activeTrains); }
+    log(msg) { console.log(msg); }
 }
 
 module.exports = TrainManager;

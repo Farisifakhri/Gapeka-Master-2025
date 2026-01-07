@@ -1,52 +1,42 @@
 const fs = require('fs');
 const path = require('path');
 
-// --- 1. KONFIGURASI WAKTU & RUTE ---
+// ==========================================
+// 1. KONFIGURASI RUTE (WINDOW TIME)
+// ==========================================
 const ROUTE_CONFIG = {
-    // Lin Utama
-    'BOO-JAKK': { start: '04:03', end: '22:30', travel: 85 }, 
-    'JAKK-BOO': { start: '05:20', end: '24:00', travel: 85 }, 
-    'DP-JAKK':  { start: '04:05', end: '21:00', travel: 55 }, 
-    'JAKK-DP':  { start: '06:00', end: '23:59', travel: 55 }, 
-    
-    // Nambo & Manggarai
-    'NMO-JAKK': { start: '04:55', end: '21:00', travel: 95 },
-    'JAKK-NMO': { start: '05:15', end: '20:00', travel: 95 },
-    'MRI-BOO':  { start: '05:10', end: '20:00', travel: 60 }, 
+    'BOO-JAKK': { start: '04:03', end: '22:30', travel: 85, toCawang: 60 }, 
+    'JAKK-BOO': { start: '05:20', end: '23:50', travel: 85, toCawang: 25 }, 
+    'DP-JAKK':  { start: '04:05', end: '21:00', travel: 55, toCawang: 30 },
+    'JAKK-DP':  { start: '06:00', end: '23:30', travel: 55, toCawang: 25 }, 
+    'NMO-JAKK': { start: '04:55', end: '21:55', travel: 95, toCawang: 35 },
+    'JAKK-NMO': { start: '05:15', end: '20:10', travel: 95, toCawang: 25 },
+    'MRI-BOO':  { start: '05:10', end: '20:00', travel: 60, toCawang: 10 }
 };
 
-// DWELL TIME
-const DWELL = {
-    'JAKK': [15, 25], 
-    'BOO': [15, 20],  
-    'NMO': [20, 30],
-    'DP': [10, 20],
-    'MRI': [5, 10]
-};
+const DWELL = { 'JAKK': [15, 25], 'BOO': [15, 20], 'NMO': [20, 30], 'DP': [10, 20], 'MRI': [5, 10] };
 
-// --- 2. TRAFFIC CONTROLLER (40 Rangkaian Logic) ---
+// ==========================================
+// 2. TRAFFIC CONTROLLER
+// ==========================================
 function getTargetCount(timeMins) {
-    if (timeMins >= 315 && timeMins < 615) return 40;  // Pagi
-    if (timeMins >= 615 && timeMins < 930) return 32;  // Siang
-    if (timeMins >= 930 && timeMins < 1200) return 40; // Sore
-    if (timeMins >= 1200 && timeMins < 1350) return 30;// Malam
-    return 15; // Late Night
+    if (timeMins >= 315 && timeMins < 615) return 40;  
+    if (timeMins >= 615 && timeMins < 930) return 32;  
+    if (timeMins >= 930 && timeMins < 1200) return 40; 
+    if (timeMins >= 1200 && timeMins < 1350) return 30;
+    return 15; 
 }
 
-// [REVISI] Headway Manusiawi (5-7 Menit)
 function getHeadway(timeMins, activeCount) {
     const target = getTargetCount(timeMins);
-    
-    // Jika jumlah kereta kurang dari target, genjot dispatch
-    // TAPI JANGAN 3 MENIT (Keteteran)
-    // Kita set 5-7 menit.
-    if (activeCount < target) return [5, 7];
-    
-    // Jika sudah sesuai target, santai aja (10-15 menit)
+    // Kita longgarkan sedikit headways-nya biar ga terlalu numpuk
+    if (activeCount < target) return [4, 6]; 
     return [10, 15];
 }
 
-// --- 3. ARMADA (TOTAL 40 SET) ---
+// ==========================================
+// 3. ARMADA
+// ==========================================
 const FLEET = [
     ...Array.from({length: 18}, (_, i) => ({ id: `JR205-${100+i}`, sf: 'SF12', pos: 'BOO' })),
     ...Array.from({length: 12}, (_, i) => ({ id: `JR205-${200+i}`, sf: 'SF10', pos: 'DP' })),
@@ -55,7 +45,9 @@ const FLEET = [
     ...Array.from({length: 2}, (_, i) => ({ id: `TM-${7000+i}`, sf: 'SF8', pos: 'MRI' }))
 ];
 
-// --- 4. KA BARANG (TETAP) ---
+// ==========================================
+// 4. KA BARANG (JADWAL TETAP)
+// ==========================================
 const FIXED_FREIGHT_TRAINS = [
     { train_id: "KA 2502", schedule_arrival: "00:30", track_id: 1, route: "KKS-SBI", sf: "LOK+15GD", train_set: "CC 206 13 45", info: "KA BAJA (Isi)" },
     { train_id: "KA 2632", schedule_arrival: "02:15", track_id: 1, route: "NMO-SBI", sf: "LOK+20GD", train_set: "CC 206 15 01", info: "KA SEMEN (Isi)" },
@@ -70,51 +62,82 @@ const FIXED_FREIGHT_TRAINS = [
     { train_id: "KLB-MPJR-2", schedule_arrival: "04:15", track_id: 1, route: "CPT-MRI", sf: "MPJR", train_set: "MTT 08-275", info: "Selesai Dinas" }
 ];
 
-// --- HELPER FUNCTIONS ---
+// ==========================================
+// 5. HELPER FUNCTIONS
+// ==========================================
 function timeToMins(timeStr) {
     const [h, m] = timeStr.split(':').map(Number);
     return h * 60 + m;
 }
-
 function minsToTime(mins) {
     let h = Math.floor(mins / 60) % 24;
     let m = mins % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
+function addMinutes(timeStr, mins) { return minsToTime(timeToMins(timeStr) + mins); }
+function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-function addMinutes(timeStr, mins) {
-    return minsToTime(timeToMins(timeStr) + mins);
+// ==========================================
+// 6. SLOT MANAGER (ANTI-COLLISION)
+// ==========================================
+// Kita simpan daftar menit kedatangan yang SUDAH DIBOOKING di Cawang
+const occupiedSlots = { 
+    1: [], // Jalur 1 (Arah Kota)
+    2: []  // Jalur 2 (Arah Bogor)
+};
+
+function isSlotAvailable(trackId, arrivalTimeMins) {
+    // Normalisasi waktu lintas hari
+    if (arrivalTimeMins >= 1440) arrivalTimeMins -= 1440;
+    
+    // Cek konflik dengan slot yang sudah ada (Gap minimal 3 menit)
+    // Supaya tidak ada KA di jam 20:40 dan 20:42 (terlalu dekat)
+    const conflict = occupiedSlots[trackId].some(slot => {
+        let diff = Math.abs(slot - arrivalTimeMins);
+        // Handle perbatasan hari (misal 23:59 vs 00:02)
+        if (diff > 1400) diff = 1440 - diff; 
+        
+        return diff < 3; // Minimal jarak 3 menit antar kedatangan
+    });
+    
+    return !conflict;
 }
 
-function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+function bookSlot(trackId, arrivalTimeMins) {
+    if (arrivalTimeMins >= 1440) arrivalTimeMins -= 1440;
+    occupiedSlots[trackId].push(arrivalTimeMins);
 }
 
-// --- MAIN GENERATOR ---
+// ==========================================
+// 7. MAIN LOGIC
+// ==========================================
 
 const schedule = [];
 let trainCounter = 1000;
 
+// Init State Armada
 const trainState = {};
-FLEET.forEach(t => {
-    trainState[t.id] = { pos: t.pos, readyAt: 0, sf: t.sf };
-});
+FLEET.forEach(t => { trainState[t.id] = { pos: t.pos, readyAt: 0, sf: t.sf }; });
 
 const lastDispatch = {};
 for (const route in ROUTE_CONFIG) lastDispatch[route] = -999;
 
-console.log(`🚀 Generasi Jadwal: Headway Manusiawi (5-7 Menit)...`);
+console.log(`🚀 Generasi Jadwal: Anti-Tabrakan & Slot Manager...`);
 
-// Loop 04:00 (240) - 24:00 (1440)
+// Booking Slot untuk KA Barang dulu (Biar KRL yang ngalah)
+FIXED_FREIGHT_TRAINS.forEach(ft => {
+    const arrMins = timeToMins(ft.schedule_arrival);
+    bookSlot(ft.track_id, arrMins);
+});
+
+// Loop Waktu 04:00 - 24:00
 for (let t = 240; t <= 1441; t++) {
     
     let idleCount = Object.values(trainState).filter(u => t >= u.readyAt && u.readyAt < 9000).length;
     let currentActive = FLEET.length - idleCount;
 
-    // [MODIFIED] Headway Relaxed
     const hwRange = getHeadway(t, currentActive);
     const dynamicHeadway = getRandomInt(hwRange[0], hwRange[1]);
-
     const routes = Object.keys(ROUTE_CONFIG).sort(() => Math.random() - 0.5);
 
     for (const route of routes) {
@@ -123,73 +146,80 @@ for (let t = 240; t <= 1441; t++) {
         const endMins = timeToMins(config.end);
 
         if (t < startMins || t > endMins) continue;
-
         const isLastTrain = (t === endMins);
-        
+
+        // Cek Headway Rute
         if (isLastTrain || (t - lastDispatch[route]) >= dynamicHeadway) {
             
             let [origin, dest] = route.split('-');
 
+            // Late Night Logic
             if (t > 1350 && origin === 'JAKK') {
                 const rand = Math.random();
-                if (rand < 0.6) dest = 'DP'; 
-                else dest = 'BOO'; 
+                dest = (rand < 0.6) ? 'DP' : 'BOO';
             }
 
+            // Cari Unit
             const unitId = Object.keys(trainState).find(id => {
                 const u = trainState[id];
                 return u.pos === origin && t >= u.readyAt && u.readyAt < 9000;
             });
 
             if (unitId) {
-                const unit = trainState[unitId];
-                lastDispatch[route] = t;
-
-                let timeToCawang = 0;
-                if (origin === 'JAKK') timeToCawang = 25;
-                else if (origin === 'MRI') timeToCawang = 10;
-                else if (origin === 'BOO') timeToCawang = 60;
-                else if (origin === 'DP') timeToCawang = 30;
-                else if (origin === 'NMO') timeToCawang = 35;
-
+                // --- LOGIKA BARU: CEK SLOT DI CAWANG ---
+                const timeToCawang = config.toCawang; // Pakai data config yang akurat
                 const arrivalAtCawang = t + timeToCawang;
-                const arrivalAtDest = t + config.travel; 
-
                 let trackId = (origin === 'JAKK' || origin === 'MRI') ? 2 : 1;
-                let kaNum = trainCounter++;
 
-                schedule.push({
-                    train_id: String(kaNum),
-                    schedule_arrival: minsToTime(arrivalAtCawang), 
-                    schedule_departure: minsToTime(arrivalAtCawang + 1),
-                    track_id: trackId,
-                    route: `${origin}-${dest}`,
-                    sf: unit.sf,
-                    train_set: unitId,
-                    info: (isLastTrain) ? "KA Terakhir" : "Normal" // Info lebih simpel
-                });
+                // Cek apakah jam segitu di Cawang kosong?
+                if (isSlotAvailable(trackId, arrivalAtCawang)) {
+                    
+                    // SLOT AMAN -> EKSEKUSI
+                    const unit = trainState[unitId];
+                    lastDispatch[route] = t;
+                    bookSlot(trackId, arrivalAtCawang); // Tandai slot terpakai
 
-                unit.pos = dest;
-                
-                let turnTime = getRandomInt(10, 20);
-                if (DWELL[dest]) turnTime = getRandomInt(DWELL[dest][0], DWELL[dest][1]);
+                    const arrivalAtDest = t + config.travel; 
+                    let kaNum = trainCounter++;
 
-                if (t > 1350 && (dest === 'BOO' || dest === 'DP')) {
-                    unit.readyAt = 9999; 
+                    schedule.push({
+                        train_id: String(kaNum),
+                        schedule_arrival: minsToTime(arrivalAtCawang), 
+                        schedule_departure: minsToTime(arrivalAtCawang + 1),
+                        track_id: trackId,
+                        route: `${origin}-${dest}`,
+                        sf: unit.sf,
+                        train_set: unitId,
+                        info: (isLastTrain) ? "KA Terakhir" : "Reguler"
+                    });
+
+                    // Update Unit
+                    unit.pos = dest;
+                    let turnTime = getRandomInt(10, 20);
+                    if (DWELL[dest]) turnTime = getRandomInt(DWELL[dest][0], DWELL[dest][1]);
+
+                    if (t > 1350 && (dest === 'BOO' || dest === 'DP')) {
+                        unit.readyAt = 9999; 
+                    } else {
+                        unit.readyAt = arrivalAtDest + turnTime;
+                    }
                 } else {
-                    unit.readyAt = arrivalAtDest + turnTime;
+                    // SLOT PENUH -> SKIP (Tunggu menit berikutnya)
+                    // Ini otomatis mengurangi jumlah kereta dan mencegah tabrakan
+                    // console.log(`Conflict at Cawang: ${minsToTime(arrivalAtCawang)} Track ${trackId}`);
                 }
             }
         }
     }
 }
 
-// GABUNG BARANG
+// Gabung Barang
 FIXED_FREIGHT_TRAINS.forEach(ft => {
     ft.schedule_departure = addMinutes(ft.schedule_arrival, 0); 
     schedule.push(ft);
 });
 
+// Sortir
 schedule.sort((a, b) => {
     let tA = timeToMins(a.schedule_arrival);
     let tB = timeToMins(b.schedule_arrival);
@@ -201,4 +231,5 @@ schedule.sort((a, b) => {
 const outputPath = path.join(__dirname, '../data/gapeka_lvl1.json');
 fs.writeFileSync(outputPath, JSON.stringify(schedule, null, 2));
 
-console.log(`✅ Sukses! Jadwal 40 Kereta dengan Headway 5-7 Menit.`);
+console.log(`✅ Sukses! Jadwal Bebas Tabrakan (Min Gap 3 Menit).`);
+console.log(`   Total Perjalanan: ${schedule.length}`);

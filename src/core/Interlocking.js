@@ -1,5 +1,3 @@
-// src/core/Interlocking.js
-
 class Interlocking {
     constructor(stationsData) {
         this.stations = stationsData;
@@ -7,75 +5,79 @@ class Interlocking {
         this.routes = stationsData.routes;
     }
 
-    // Fungsi otomatis untuk update sinyal berdasarkan kereta di depannya
+    // UPDATE SINYAL OTOMATIS (MENGALIR)
     updateSignalChain(trains) {
-        // ... (Kode updateSignalChain sebelumnya tetap sama, tidak perlu diubah) ...
-        // Bagian ini menangani perubahan otomatis saat kereta bergerak
-        // Misal: Setelah kereta lewat, sinyal jadi merah otomatis.
+        // Kita definisikan urutan sinyal dari Blok Terjauh mundur ke Sinyal Muka
+        // Urutan: BLOK -> KELUAR -> MASUK -> MUKA
+        const chainJ1 = ['J1_BLK', 'J1_OUT', 'J1_IN', 'J1_PRE'];
+        const chainJ2 = ['J2_BLK', 'J2_OUT', 'J2_IN', 'J2_PRE'];
+
+        this.processChain(chainJ1, trains);
+        this.processChain(chainJ2, trains);
+    }
+
+    processChain(order, trains) {
+        // Loop setiap sinyal dalam rantai
+        for (let i = 0; i < order.length; i++) {
+            const currentId = order[i];
+            const currentSig = this.signals[currentId];
+            
+            if (!currentSig) continue;
+
+            // 1. CEK FISIK: Ada kereta gak di blok ini?
+            // (Blok Sinyal Muka biasanya sama dengan blok Sinyal Masuk utk deteksi)
+            let blockToCheck = currentSig.blockId;
+            const isOccupied = this.checkBlockOccupancy(blockToCheck, trains);
+
+            if (isOccupied) {
+                currentSig.status = 'RED'; // Mutlak Merah
+            } else {
+                // 2. CEK SINYAL DEPANNYA (LOOK AHEAD)
+                // Kalau blok kosong, aspek tergantung sinyal di depannya
+                
+                const nextSigId = currentSig.nextSignal;
+                
+                if (!nextSigId) {
+                    // Ujung Dunia (Gak ada sinyal lagi) -> HIJAU
+                    currentSig.status = 'GREEN';
+                } else {
+                    const nextSig = this.signals[nextSigId];
+                    if (nextSig) {
+                        if (nextSig.status === 'RED') {
+                            currentSig.status = 'YELLOW'; // Depan Merah -> Kita Kuning
+                        } else if (nextSig.status === 'YELLOW') {
+                            currentSig.status = 'GREEN';  // Depan Kuning -> Kita Hijau
+                        } else {
+                            currentSig.status = 'GREEN';  // Depan Hijau -> Kita Hijau
+                        }
+                    } else {
+                        currentSig.status = 'GREEN'; // Fallback
+                    }
+                }
+            }
+        }
     }
 
     checkBlockOccupancy(blockId, trains) {
         return trains.some(t => t.currentBlock === blockId);
     }
 
-    // --- FUNGSI REQUEST RUTE (MANUAL DARI UI/VOICE) ---
+    // REQUEST RUTE MANUAL (OVERRIDE DARI UI)
     requestRoute(routeId, forcedAspect = null) {
-        console.log(`🕹️ REQUEST ROUTE: ${routeId}`);
-
-        // 1. Mapping Rute ke ID Sinyal
         const routeMap = {
-            'ROUTE_IN_J1': 'J1_IN',
-            'ROUTE_IN_J2': 'J2_IN',
-            'ROUTE_OUT_J1': 'J1_OUT',
-            'ROUTE_OUT_J2': 'J2_OUT'
+            'ROUTE_IN_J1': 'J1_IN', 'ROUTE_IN_J2': 'J2_IN',
+            'ROUTE_OUT_J1': 'J1_OUT', 'ROUTE_OUT_J2': 'J2_OUT'
         };
-
         const signalId = routeMap[routeId];
-        if (!signalId) return "RUTE TIDAK DITEMUKAN";
-
-        const signal = this.signals[signalId];
         
-        // 2. LOGIKA INTERLOCKING (SAFETY CHECK)
-
-        // A. JIKA MEMBUKA SINYAL KELUAR (EXIT)
-        if (signal.type === 'EXIT') {
-            // Cek apakah blok di depan aman? (Simplifikasi: kita anggap aman/GREEN dulu)
-            // Jika dipaksa manual (forcedAspect), ikuti perintah user
-            if (forcedAspect) {
-                signal.status = forcedAspect;
-            } else {
-                // Default: Buka ke HIJAU
-                signal.status = 'GREEN';
-            }
+        if (this.signals[signalId]) {
+            // Paksa buka (Hijau dulu, nanti dikoreksi updateSignalChain)
+            // Kecuali dipaksa aspek tertentu (misal minta kuning)
+            this.signals[signalId].status = forcedAspect || 'GREEN'; 
+            return `SINYAL ${signalId} DIBUKA MANUAL.`;
         }
-        
-        // B. JIKA MEMBUKA SINYAL MASUK (ENTRY)
-        else if (signal.type === 'ENTRY') {
-            // Cek status sinyal keluarnya (linkedExit)
-            const exitSignalId = signal.linkedExit;
-            const exitSignal = this.signals[exitSignalId];
-
-            if (forcedAspect) {
-                signal.status = forcedAspect;
-            } else {
-                // LOGIKA OTOMATIS ASPEK:
-                if (exitSignal.status === 'RED') {
-                    // Jika Keluar Merah -> Masuk KUNING (Kereta harus berhenti di stasiun)
-                    signal.status = 'YELLOW';
-                } else {
-                    // Jika Keluar Hijau/Kuning -> Masuk HIJAU (Kereta boleh bablas/langsung)
-                    signal.status = 'GREEN';
-                }
-            }
-        }
-
-        return `SINYAL ${signalId} DIBUKA MENJADI ${signal.status}`;
-    }
-
-    // Fungsi Reset Sinyal ke Merah (Saat kereta lewat)
-    normalizeSignal(id) {
-        if(this.signals[id]) this.signals[id].status = 'RED';
+        return "GAGAL";
     }
 }
 
-if (typeof module !== 'undefined') module.exports = Interlocking;
+module.exports = Interlocking;
