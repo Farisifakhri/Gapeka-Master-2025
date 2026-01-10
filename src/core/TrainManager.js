@@ -2,299 +2,252 @@ const gapekaData = require('../../data/gapeka_lvl1.json');
 const MapData = require('./StationMap');
 
 class TrainManager {
-    constructor(io, stationData, interlocking) { 
+    constructor(io, interlocking) { 
         this.io = io;
-        this.station = stationData;
         this.interlocking = interlocking; 
         this.activeTrains = [];
         this.completedTrains = [];
-        this.gameTimeStr = "05:00:00"; 
+        this.gameTimeStr = "04:00:00"; // Start pagi hari
     }
 
-    updateTrains(gameTime, interlocking) {
+    // Dipanggil oleh GameLoop setiap detik (tick)
+    updateTrains(gameTime) {
         this.gameTimeStr = gameTime;
-        this.interlocking = interlocking; 
         
+        // 1. Cek Jadwal (Spawn Kereta)
         this.spawnCheck(gameTime);
+        
+        // 2. Gerakkan Kereta & Cek Sinyal
         this.updatePhysics();
-        this.checkAudioTriggers(); // <-- FITUR BARU
     }
 
-    // --- 1. SPAWN LOGIC ---
+    // --- 1. SPAWN LOGIC (Start dari Tangerang) ---
     spawnCheck(currentTime) {
-        const currentSeconds = this.timeToSeconds(currentTime);
+        // Format jam "HH:MM"
+        const currentShortTime = currentTime.slice(0, 5);
 
         gapekaData.forEach(train => {
-            if (this.completedTrains.includes(train.train_id)) return;
-            if (this.activeTrains.find(t => t.train_id === train.train_id)) return;
-
-            const schAtCawang = this.timeToSeconds(train.schedule_arrival);
-            
-            // Logic Lintas Hari (00:xx)
-            let diff = schAtCawang - currentSeconds;
-            if (schAtCawang < 10800 && currentSeconds > 75600) { 
-                 diff += 86400; // Jadwal pagi (besok), sekarang malam
-            }
-
-            // Spawn Window (+/- 60 Menit)
-            if (diff >= -3600 && diff <= 300) {
-                let avgSpeedMs = 13.8; 
-                let distanceDiffKm = (diff * avgSpeedMs) / 1000; 
+            // Cek apakah kereta belum berangkat, belum ada di map, dan jamnya pas
+            if (train.status === 'NOT_DEPARTED' && 
+                train.schedule_departure_tng === currentShortTime &&
+                !this.activeTrains.find(t => t.id === train.train_id)) {
                 
-                let startKm;
-                if (train.track_id === 1) { 
-                    startKm = 13.7 + distanceDiffKm;
-                    if (startKm < 13.9) return; 
-                } else {
-                    startKm = 13.7 - distanceDiffKm;
-                    if (startKm > 13.5) return; 
-                }
-
-                if (startKm < -1 || startKm > 52) return;
-
-                const isNambo = train.route.includes("NMO");
-                const originStation = train.route.split('-')[0];
-
-                this.activeTrains.push({
-                    ...train,
-                    ka_id: train.train_id,
-                    status: 'RUNNING',
-                    currentKm: startKm,
-                    currentSpeedKmh: 40, 
-                    isNambo: isNambo,
-                    distanceToSignal: 99999,
-                    info: `Berangkat ${originStation}`,
-                    nextStationName: '...',
-                    nextStationDist: 0,
-                    arrivalStatus: null,
-                    dwellTimer: 0,
-                    npcDwellTimer: 0,
-                    isHeldAtBogor: false,
-                    remove: false,
+                // Spawn Kereta di Stasiun Tangerang (KM 19.3)
+                const newTrain = {
+                    id: train.train_id,
+                    name: `KA ${train.train_id}`,
+                    type: train.type, // 'COMMUTER' atau 'AIRPORT_TRAIN'
+                    route: train.route,
                     
-                    // Flags Audio & UI
-                    playedAnnounceArr: false,
-                    playedAnnounceDep: false,
-                    playedAnnounceLS: false,
-                    hasStoppedAtCawang: false,
-                    hideOnSchedule: false
-                });
-                this.broadcast();
+                    // FISIKA
+                    currentKm: 19.3,    // Posisi Awal (Tangerang)
+                    speed: 0,           // Diam
+                    maxSpeed: train.type === 'AIRPORT_TRAIN' ? 85 : 80,
+                    
+                    // STATE
+                    status: 'BOARDING', // Status awal
+                    currentBlock: 'TNG_PLATFORM',
+                    targetSignalId: null, // Sinyal yang sedang dihadapi
+                    
+                    // INFO UI
+                    destination: 'Duri',
+                    nextStation: 'Tanah Tinggi',
+                    info: 'Persiapan Berangkat'
+                };
+
+                this.activeTrains.push(newTrain);
+                
+                // Update status di JSON memori (biar gak spawn dobel)
+                train.status = 'READY_AT_PLATFORM'; 
+                
+                this.io.emit('notification', `🔔 KA ${train.train_id} Siap di Jalur Stasiun Tangerang!`);
+                console.log(`[SPAWN] ${newTrain.name} muncul di Tangerang.`);
             }
         });
     }
 
-    // --- 2. PHYSICS & MOVEMENT ---
+    // --- 2. PHYSICS & MOVEMENT (Arah TNG -> DU) ---
     updatePhysics() {
-        let changed = false;
-        
         this.activeTrains.forEach(t => {
-            if (t.status === 'NPC_STOP' || t.status === 'DWELLING') t.currentSpeedKmh = 0;
+            // A. Tentukan Sinyal di Depan (Lookahead)
+            this.checkSignalAhead(t);
 
-            let deltaKm = (t.currentSpeedKmh / 3600); 
-            if (t.track_id === 1) t.currentKm -= deltaKm; 
-            else t.currentKm += deltaKm; 
-
-            const nearestStn = MapData.getNearestStation(t.currentKm, t.isNambo);
-            const distToNearest = Math.abs(t.currentKm - nearestStn.km);
-            const distToCawang = Math.abs(t.currentKm - 13.7);
-            const isNearCawang = distToCawang < 2.5; 
-
-            // Update Next Station Info
-            const targetStn = this.findNextStation(t);
-            if (targetStn) {
-                t.nextStationName = targetStn.name;
-                t.nextStationDist = Math.abs(t.currentKm - targetStn.km).toFixed(1);
-            }
-
-            // --- LOGIKA HAPUS JADWAL (AUTO-HIDE) ---
-            if (t.status === 'RUNNING' && distToCawang > 0.5 && t.hasStoppedAtCawang) {
-                t.hideOnSchedule = true; 
-            }
-            if (t.status === 'DWELLING' && distToCawang < 0.1) {
-                t.hasStoppedAtCawang = true;
-            }
-
-            // --- STATE MACHINE ---
-            if (isNearCawang) {
-                this.handlePlayerStation(t, distToCawang);
-            } else {
-                this.handleNPCStation(t, nearestStn, distToNearest);
-            }
-
-            // --- TASPAT ---
-            if (t.status !== 'DWELLING' && t.status !== 'NPC_STOP') {
-                const limit = this.getSpeedLimit(t, nearestStn.id, distToNearest);
-                this.adjustSpeed(t, limit);
-            }
-
-            // Cleanup
-            if (t.currentKm < -1 || t.currentKm > 52) t.remove = true; 
-            changed = true;
-        });
-
-        if (this.activeTrains.some(t => t.remove)) {
-            this.activeTrains = this.activeTrains.filter(t => !t.remove);
-            changed = true;
-        }
-
-        if (changed) this.broadcast();
-    }
-
-    // --- 3. AUDIO TRIGGER ---
-    checkAudioTriggers() {
-        const currSeconds = this.timeToSeconds(this.gameTimeStr);
-
-        this.activeTrains.forEach(t => {
-            const schArr = this.timeToSeconds(t.schedule_arrival);
-            const isGoods = t.train_id.includes("KA") || t.train_id.includes("KLB");
-
-            // Fix Cross Day calc for audio
-            let diffArr = schArr - currSeconds;
-            if (diffArr < -40000) diffArr += 86400; // Jadwal besok
-
-            // A. KRL TIBA (1 Menit Sebelum)
-            if (!isGoods && !t.playedAnnounceArr && diffArr <= 60 && diffArr > 0) {
-                this.io.emit('play_audio', { type: 'ARR_KRL', train: t });
-                t.playedAnnounceArr = true; 
-            }
-
-            // B. KRL BERANGKAT (1 Menit Setelah Lepas)
-            if (!isGoods && !t.playedAnnounceDep && t.hasStoppedAtCawang && t.status === 'RUNNING') {
-                this.io.emit('play_audio', { type: 'DEP_KRL', train: t });
-                t.playedAnnounceDep = true;
-            }
-
-            // C. KA BARANG/LS (2 Menit Sebelum)
-            if (isGoods && !t.playedAnnounceLS && diffArr <= 120 && diffArr > 0) {
-                this.io.emit('play_audio', { type: 'ARR_LS', train: t });
-                t.playedAnnounceLS = true;
-            }
-        });
-    }
-
-    // --- HELPER LOGIC ---
-    getSpeedLimit(t, nearestId, distToNearest) {
-        let km = t.currentKm;
-        if (km >= 0 && km <= 1.5) return 40; // JAKK-JAY
-        if (nearestId === 'GMR' && distToNearest < 0.8) return 45;
-        if (nearestId === 'MRI' && distToNearest < 1.0) return 40;
-        if (nearestId === 'PSM' && distToNearest < 0.8) return 40;
-        if (nearestId === 'UI' && distToNearest < 1.0 && t.currentSpeedKmh > 60) return 40;
-        if (km >= 28.0 && km <= 30.5) return 50; // DEPOK AREA
-        if (nearestId === 'CTA' && distToNearest < 1.0) return 50;
-        if (nearestId === 'BOO' && distToNearest < 1.2) return 30;
-        return 80; 
-    }
-
-    handleNPCStation(t, nearestStn, dist) {
-        if (nearestStn.id === 'GMR') { t.info = `LS Gambir`; return; } // Gambir LS
-        
-        if (dist < 0.05 && t.status === 'RUNNING') {
-            t.status = 'NPC_STOP';
-            t.npcDwellTimer = (nearestStn.id === 'BOO' && !t.isHeldAtBogor) ? 60 : 20;
-            if(nearestStn.id === 'BOO') t.isHeldAtBogor = true;
-            t.info = `Berhenti ${nearestStn.name}`;
-        }
-
-        if (t.status === 'NPC_STOP') {
-            if (t.npcDwellTimer > 0) t.npcDwellTimer--;
-            else {
-                t.status = 'RUNNING';
-                if (t.track_id === 1) t.currentKm -= 0.1; else t.currentKm += 0.1;
-            }
-        }
-    }
-
-    handlePlayerStation(t, distToCawang) {
-        if (t.status === 'RUNNING') t.status = 'APPROACHING';
-
-        if (t.status === 'APPROACHING') {
-            t.distanceToSignal = (distToCawang * 1000) - 300; 
-            const sigName = t.track_id === 1 ? 'J1_IN' : 'J2_IN';
-            const signalStatus = this.interlocking.signals[sigName].status;
-
-            if (t.distanceToSignal <= 0) {
-                if (signalStatus === 'GREEN' || signalStatus === 'YELLOW') {
-                    t.status = 'ENTERING';
-                    t.currentBlock = (t.track_id === 1) ? 'TRACK_1' : 'TRACK_2';
-                    if(this.interlocking.signals[sigName]) this.interlocking.signals[sigName].status = 'RED';
-                    this.io.emit('signal_update', { id: sigName, status: 'RED' });
-                } else {
-                    t.currentSpeedKmh = Math.max(0, t.currentSpeedKmh - 5); 
-                    t.info = `Menunggu Sinyal Masuk`;
-                }
-            } else {
-                 if(t.currentSpeedKmh > 40) t.currentSpeedKmh -= 1;
-            }
-        }
-        else if (t.status === 'ENTERING') {
-            if (t.currentSpeedKmh > 15) t.currentSpeedKmh -= 1.5;
-            if (distToCawang < 0.05) {
-                t.status = 'DWELLING';
-                t.currentSpeedKmh = 0;
-                t.dwellTimer = 25; 
-                this.checkArrival(t);
-            }
-        }
-        else if (t.status === 'DWELLING') {
-            if (t.dwellTimer > 0) {
-                t.dwellTimer--;
-                t.info = `Boarding... (${t.dwellTimer})`;
-            } else {
-                const sigOut = t.track_id === 1 ? 'J1_OUT' : 'J2_OUT';
-                const signalStatus = this.interlocking.signals[sigOut].status;
-                if (signalStatus === 'GREEN' || signalStatus === 'YELLOW') {
-                    t.status = 'DEPARTING';
-                    t.currentSpeedKmh = 5; 
-                    t.currentBlock = 'BLOCK_NEXT';
-                    if(this.interlocking.signals[sigOut]) this.interlocking.signals[sigOut].status = 'RED';
-                    this.io.emit('signal_update', { id: sigOut, status: 'RED' });
-                } else {
-                    t.info = "Tunggu Sinyal Keluar";
+            // B. Logika Pergerakan (State Machine)
+            if (t.status === 'BOARDING') {
+                // Nunggu Dispatcher kasih sinyal keluar TNG
+                if (this.isSignalGreen(t.targetSignalId)) {
+                    t.status = 'ACCELERATING';
+                    t.info = 'Berangkat Tangerang';
+                    this.io.emit('notification', `${t.name} berangkat dari Tangerang!`);
                 }
             }
+            else if (t.status === 'ACCELERATING' || t.status === 'RUNNING') {
+                // Akselerasi sampai batas kecepatan
+                if (t.speed < t.maxSpeed) t.speed += 0.5;
+                
+                // Kalau ada sinyal merah di depan dalam jarak 1.5km, mulai ngerem
+                if (t.distanceToSignal < 1.5 && !this.isSignalGreen(t.targetSignalId)) {
+                    t.status = 'BRAKING';
+                } else {
+                    t.status = 'RUNNING';
+                }
+            }
+            else if (t.status === 'BRAKING') {
+                // Pengereman
+                if (t.speed > 0) t.speed -= 0.8; 
+                
+                // Kalau berhenti total
+                if (t.speed <= 0) {
+                    t.speed = 0;
+                    t.status = 'WAITING_SIGNAL';
+                    t.info = 'Menunggu Sinyal Aman...';
+                }
+                
+                // Kalau tiba-tiba dikasih hijau pas lagi ngerem, gas lagi
+                if (this.isSignalGreen(t.targetSignalId)) {
+                    t.status = 'ACCELERATING';
+                }
+            }
+            else if (t.status === 'WAITING_SIGNAL') {
+                // Diam depan sinyal merah
+                if (this.isSignalGreen(t.targetSignalId)) {
+                    // Validasi Jalur sebelum jalan lagi
+                    const validasi = this.validateRouting(t);
+                    if (validasi.valid) {
+                        t.status = 'ACCELERATING';
+                        t.info = 'Lanjut Jalan';
+                    } else {
+                        // Kena Penalti/Game Over kalau salah jalur
+                        t.info = `⛔ ${validasi.msg}`;
+                    }
+                }
+            }
+
+            // C. Update Posisi KM (Mundur dari 19.3 ke 0)
+            // Konversi speed (km/h) ke (km/tick). Asumsi 1 tick = 1 detik simulasi.
+            const deltaKm = (t.speed / 3600); 
+            t.currentKm -= deltaKm; 
+
+            // D. Update Info Stasiun Terdekat
+            const nearest = MapData.getNearestStation(t.currentKm);
+            t.nextStation = nearest.name;
+
+            // E. Cek Finish (Tiba di Duri KM 0)
+            if (t.currentKm <= 0.2 && t.status !== 'FINISHED') {
+                this.handleArrivalDuri(t);
+            }
+        });
+
+        // Hapus kereta yang sudah selesai dinas
+        this.activeTrains = this.activeTrains.filter(t => t.status !== 'FINISHED');
+
+        // Broadcast ke Frontend
+        this.io.emit('train_update', this.activeTrains);
+    }
+
+    // --- 3. SIGNAL CHECKING ---
+    checkSignalAhead(train) {
+        // Tentukan kereta ada di petak mana berdasarkan KM
+        const area = MapData.getInterlockingArea(train.currentKm);
+        
+        // Reset jarak sinyal (default jauh)
+        train.distanceToSignal = 99;
+
+        if (area === 'TNG_AREA' && train.status === 'BOARDING') {
+            // Asumsi KRL selalu start di Jalur 1 untuk game level 1
+            train.targetSignalId = 'TNG_OUT_1'; 
+            train.distanceToSignal = 0; 
         }
-        else if (t.status === 'DEPARTING') {
-            if (t.currentSpeedKmh < 80) t.currentSpeedKmh += 2;
-            if (distToCawang > 1.5) {
-                t.status = 'RUNNING';
-                t.currentBlock = 'LINTAS';
+        else if (area === 'BPR_AREA' && train.currentKm > 15.7) {
+            // Mendekati Batu Ceper dari arah Tangerang
+            train.targetSignalId = 'BPR_IN_TNG'; 
+            train.distanceToSignal = train.currentKm - 15.7;
+        }
+        else if (area === 'RW_AREA' && train.currentKm > 10.0) {
+            // Mendekati Rawa Buaya
+            // Disini logic dispatch harus milih jalur lewat UI
+            // Kita cek sinyal mana yang HIJAU, itu yang jadi target logika kereta
+            if (this.isSignalGreen('RW_IN_1')) train.targetSignalId = 'RW_IN_1'; // Lurus
+            else if (this.isSignalGreen('RW_IN_2')) train.targetSignalId = 'RW_IN_2'; // Belok
+            else train.targetSignalId = 'RW_IN_1'; // Default liat sinyal utama
+            
+            train.distanceToSignal = train.currentKm - 10.0;
+        }
+        else if (area === 'DU_AREA' && train.currentKm > 0.5) {
+            // Mendekati Duri
+            if (this.isSignalGreen('DU_IN_J5')) train.targetSignalId = 'DU_IN_J5';
+            else if (this.isSignalGreen('DU_IN_J4')) train.targetSignalId = 'DU_IN_J4';
+            else train.targetSignalId = 'DU_IN_J5';
+
+            train.distanceToSignal = train.currentKm - 0.5;
+        }
+        else {
+            train.targetSignalId = null; // Di Lintas (Petak Jalan)
+        }
+    }
+
+    // Helper cek status sinyal dari Interlocking
+    isSignalGreen(signalId) {
+        if (!signalId) return true; // Kalau gak ada sinyal (di lintas), anggap hijau
+        
+        // Ambil station ID dari kode sinyal (RW_IN_1 -> RW)
+        const parts = signalId.split('_'); 
+        const stationId = parts[0]; 
+
+        // Panggil Interlocking
+        const status = this.interlocking.getSignalStatus(stationId, signalId);
+        return status === 'GREEN' || status === 'YELLOW';
+    }
+
+    // --- 4. ROUTING VALIDATOR (LOGIKA DURI & RW) ---
+    validateRouting(train) {
+        // Validasi saat kereta mau masuk sinyal yang sudah hijau
+        const signalId = train.targetSignalId;
+        if (!signalId) return { valid: true };
+
+        // A. CEK RAWA BUAYA (RW)
+        if (signalId.startsWith('RW')) {
+            // Jalur 2 (RW_IN_2) Khusus KA Bandara
+            if (signalId === 'RW_IN_2' && train.type === 'COMMUTER') {
+                // KRL masuk jalur susul? Boleh tapi kasih peringatan
+                return { valid: true, msg: 'Warning: KRL masuk jalur susul' };
+            }
+            // Jalur 1 (RW_IN_1) Utama KRL
+            if (signalId === 'RW_IN_1' && train.type === 'AIRPORT_TRAIN') {
+                // KA Bandara masuk jalur 1? Boleh kalau gak nyusul
+                return { valid: true, msg: 'KA Bandara masuk jalur utama' };
             }
         }
+
+        // B. CEK DURI (DU) - INI KRUSIAL
+        if (signalId.startsWith('DU')) {
+            // DU_IN_J5 = Jalur 5 (KRL Only)
+            if (signalId === 'DU_IN_J5' && train.type === 'AIRPORT_TRAIN') {
+                return { valid: false, msg: 'SALAH JALUR! KA Bandara Dilarang Masuk Jalur 5!' };
+            }
+            
+            // DU_IN_J4 = Jalur 4 (KA Bandara Only)
+            if (signalId === 'DU_IN_J4' && train.type === 'COMMUTER') {
+                return { valid: false, msg: 'SALAH JALUR! KRL Dilarang Masuk Jalur 4!' };
+            }
+        }
+
+        return { valid: true };
     }
 
-    findNextStation(t) {
-        const map = t.isNambo ? MapData.NAMBO_BRANCH : MapData.STATION_MAP;
-        if (t.track_id === 1) return [...map].reverse().find(s => s.km < t.currentKm);
-        else return map.find(s => s.km > t.currentKm);
+    handleArrivalDuri(t) {
+        t.speed = 0;
+        t.status = 'FINISHED';
+        t.currentKm = 0;
+        this.completedTrains.push(t.id);
+        
+        // Cek Poin
+        if (t.type === 'COMMUTER') {
+            this.io.emit('notification', `✅ ${t.name} Selesai Dinas di Jalur 5 Duri.`);
+        } else {
+            this.io.emit('notification', `✈️ ${t.name} (Bandara) Lanjut ke Manggarai.`);
+        }
     }
-
-    adjustSpeed(train, targetSpeed) {
-        if (train.currentSpeedKmh < targetSpeed) train.currentSpeedKmh += 1.0; 
-        else if (train.currentSpeedKmh > targetSpeed) train.currentSpeedKmh -= 1.5; 
-    }
-
-    checkArrival(t) {
-        const schArr = this.timeToSeconds(t.schedule_arrival);
-        const actArr = this.timeToSeconds(this.gameTimeStr);
-        let diff = actArr - schArr;
-        if (diff < -40000) diff += 86400; 
-
-        let status = 'ONTIME';
-        if (diff < -120) status = 'EARLY';
-        if (diff > 180) status = 'LATE';
-        t.arrivalStatus = status;
-    }
-
-    timeToSeconds(timeStr) {
-        if (!timeStr) return 0;
-        const parts = timeStr.split(':');
-        return (parseInt(parts[0]) * 3600) + (parseInt(parts[1]) * 60) + (parts[2] ? parseInt(parts[2]) : 0);
-    }
-
-    broadcast() { this.io.emit('train_update', this.activeTrains); }
-    log(msg) { console.log(msg); }
 }
 
 module.exports = TrainManager;

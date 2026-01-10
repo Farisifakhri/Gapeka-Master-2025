@@ -1,118 +1,161 @@
 const socket = io();
-const audioPlayer = document.getElementById('audio-player'); 
 
-// --- SETUP VOICE ---
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognition = new SpeechRecognition();
-recognition.lang = 'id-ID'; 
-recognition.continuous = true; 
+// Element DOM
+const clockEl = document.getElementById('game-clock');
+const stationsContainer = document.getElementById('stations-container');
+const trainList = document.getElementById('train-list');
+const logList = document.getElementById('log-list');
 
-function startSystem() {
-    document.getElementById('start-overlay').style.display = 'none';
-    const amb = document.getElementById('sfx-ambience');
-    if(amb) { amb.volume = 0.2; amb.play().catch(e=>console.log(e)); }
-    try { recognition.start(); } catch(e){}
-}
+// --- 1. INISIALISASI SINYAL DARI SERVER ---
+socket.on('init_signals', (data) => {
+    stationsContainer.innerHTML = ''; // Bersihkan loading
 
-// --- AUDIO EVENT ---
-socket.on('play_audio', (data) => {
-    let src = '';
-    if (data.type === 'ARR_KRL') src = 'assets/announce_arrival_krl.mp3';
-    else if (data.type === 'DEP_KRL') src = 'assets/announce_departure.mp3';
-    else if (data.type === 'ARR_LS') src = 'assets/announce_ls.mp3';
-    
-    if (src && audioPlayer) {
-        audioPlayer.src = src;
-        audioPlayer.play().catch(e => console.log("Audio Error:", e));
-        console.log(`📢 PLAYING: ${src}`);
-    }
-});
-
-// --- CLOCK ---
-socket.on('time_update', (data) => {
-    document.getElementById('clock').innerText = data.time;
-});
-
-// --- SIGNALS ---
-socket.on('init_signals', (signals) => {
-    for (const [key, val] of Object.entries(signals)) { updateLampUI(key, val.status); }
-});
-socket.on('signal_update', (data) => { updateLampUI(data.id, data.status); });
-
-function updateLampUI(signalId, status) {
-    const lampEl = document.getElementById(`lamp-${signalId}`);
-    if (lampEl) {
-        lampEl.className = `lamp ${status}`;
-        if (status === 'GREEN') lampEl.style.boxShadow = "0 0 15px #2ecc71";
-        else if (status === 'YELLOW') lampEl.style.boxShadow = "0 0 15px #f1c40f";
-        else lampEl.style.boxShadow = "none";
-    }
-}
-
-async function reqRoute(routeId) {
-    await fetch('/api/interlocking/request-route', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ routeId })
-    });
-}
-
-// --- SCHEDULE TABLE (FILTERED) ---
-socket.on('train_update', (trains) => {
-    const tbody = document.getElementById('schedule-body');
-    tbody.innerHTML = '';
-
-    // FILTER: Hapus kereta yang sudah berangkat (hideOnSchedule)
-    // SORT: Urutkan berdasarkan waktu
-    const displayTrains = trains
-        .filter(t => !t.hideOnSchedule)
-        .sort((a, b) => a.schedule_arrival.localeCompare(b.schedule_arrival))
-        .slice(0, 3);
-
-    if (displayTrains.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:#666;">TIDAK ADA JADWAL</td></tr>`;
-        return;
-    }
-
-    displayTrains.forEach((t, index) => {
-        const tr = document.createElement('tr');
+    // Loop setiap stasiun (TNG, BPR, RW, DU)
+    Object.entries(data).forEach(([id, station]) => {
+        const card = document.createElement('div');
+        card.className = 'station-card';
         
-        let rowStyle = index === 0 ? 'background: rgba(46, 204, 113, 0.15); border-left: 5px solid #2ecc71;' : 'opacity: 0.7;';
-        let fontStyle = index === 0 ? 'font-size: 1.2rem; font-weight: bold;' : 'font-size: 1rem;';
-        
-        let speed = Math.round(t.currentSpeedKmh || 0);
-        let speedColor = speed === 0 ? '#e74c3c' : (speed > 70 ? '#f1c40f' : '#fff');
-        let badgeColor = (t.sf === 'SF12') ? 'badge-sf12' : ((t.sf === 'SF10') ? 'badge-sf10' : 'badge-sf8');
-
-        tr.style = rowStyle;
-        tr.innerHTML = `
-            <td style="color:#fff; ${fontStyle}">${t.train_id}</td>
-            <td style="${fontStyle}">
-                <div style="margin-bottom: 2px;">${t.route}</div>
-                <div style="font-size:0.75em; color:#f39c12;"><i class="fas fa-map-marker-alt"></i> ${t.info || 'Lintas'}</div>
-            </td>
-            <td style="text-align:center;"><span style="background:#444; color:#fff; padding:4px 8px; border-radius:4px;">${t.track_id}</span></td>
-            <td><span style="color:${speedColor}; font-weight:bold;">${speed}</span> km/h</td>
-            <td>
-                <div style="display:flex; flex-direction:column;">
-                    <span style="font-weight:bold; color:#fff;">${t.nextStationName || '-'}</span>
-                    <span style="font-size:0.8em; color:#2ecc71;">${t.nextStationDist || 0} km</span>
-                </div>
-            </td>
-            <td style="font-family:'Share Tech Mono'; color:#f1c40f; ${fontStyle}">${t.schedule_arrival}</td>
-            <td>
-                <div style="display:flex; flex-direction:column;">
-                    <span style="font-weight:bold; color:${t.status === 'DWELLING' ? '#e74c3c' : '#3498db'}">${t.status === 'DWELLING' ? 'STOP' : t.status}</span>
-                    <span class="badge-sf ${badgeColor}" style="font-size:0.7em;">${t.sf}</span>
-                </div>
-            </td>
+        // Header Stasiun
+        let html = `
+            <div class="station-header">
+                <span>${station.name}</span>
+                <span class="station-code">${id}</span>
+            </div>
+            <div class="signal-group">
         `;
-        tbody.appendChild(tr);
+
+        // Loop Sinyal di dalam Stasiun
+        Object.entries(station.signals).forEach(([sigKey, sigData]) => {
+            const statusClass = sigData.status.toLowerCase(); // 'red' or 'green'
+            html += `
+                <div class="signal-btn ${statusClass}" 
+                     id="btn-${sigData.id}"
+                     onclick="toggleSignal('${id}', '${sigKey}')">
+                    <span>${sigData.label}</span>
+                    <div class="status-indicator"></div>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+        card.innerHTML = html;
+        stationsContainer.appendChild(card);
+    });
+});
+
+// --- 2. UPDATE SINYAL REALTIME ---
+socket.on('signal_update', (data) => {
+    // Cari tombol yang ID-nya sesuai data dari server
+    // data.signalId di server = "TNG_OUT_1", di HTML id="btn-TNG_OUT_1"
+    // Tapi di loop init kita pakai data.signals[key].id
+    
+    // Perhatikan: di script.js init, kita pakai ID dari JSON stations.json
+    // Contoh JSON: "OUT_1": { "id": "TNG_OUT_1", ... }
+    
+    // Kita cari tombol spesifik
+    // Karena logic toggleSignal mengirim stationId & signalKey,
+    // server membalas dengan status baru.
+    
+    // Agar aman, kita refresh UI tombol berdasarkan ID unik
+    const btn = document.getElementById(`btn-${data.signalId}`); 
+    // Tapi tunggu, data.signalId dari server adalah KEY (misal 'OUT_1') atau ID unik?
+    // Cek Interlocking.js -> setSignal -> return true
+    // Level1.js -> emit 'signal_update' -> { stationId, signalId, status }
+    // signalId disini adalah KEY (contoh: 'OUT_1').
+    
+    // Jadi kita harus cari tombol berdasarkan kombinasi Station + Key
+    // Namun di render awal kita pakai ID unik dari JSON.
+    // Mari kita perbaiki selectornya nanti. 
+    
+    // SOLUSI: Kita refresh kelas warna saja
+    // Karena kita tidak punya ID unik di event ini, kita cari elemen manual atau reload
+    // Tapi biar cepat, kita cari elemen yang punya onclick parameter pas.
+    
+    const buttons = document.querySelectorAll('.signal-btn');
+    buttons.forEach(b => {
+        const onClickAttr = b.getAttribute('onclick');
+        if (onClickAttr.includes(`'${data.stationId}', '${data.signalId}'`)) {
+            // Update warna
+            if (data.status === 'GREEN') {
+                b.classList.remove('red');
+                b.classList.add('green');
+            } else {
+                b.classList.remove('green');
+                b.classList.add('red');
+            }
+        }
+    });
+});
+
+// --- 3. UPDATE MONITOR KERETA ---
+socket.on('train_update', (trains) => {
+    trainList.innerHTML = '';
+    
+    trains.forEach(t => {
+        const row = document.createElement('tr');
+        
+        // Kelas warna berdasarkan tipe
+        const typeClass = t.type === 'AIRPORT_TRAIN' ? 'type-AIRPORT' : '';
+        const statusClass = `status-${t.status.split('_')[0]}`; // RUNNING, BRAKING
+
+        row.innerHTML = `
+            <td class="${typeClass}"><strong>${t.id}</strong></td>
+            <td>KM ${t.currentKm.toFixed(1)} <small>(${t.nextStation})</small></td>
+            <td>${t.speed.toFixed(0)} km/h</td>
+            <td class="${statusClass}">${t.info || t.status}</td>
+        `;
+        trainList.appendChild(row);
+    });
+});
+
+// --- 4. JAM & LOG ---
+socket.on('time_update', (time) => {
+    clockEl.innerText = time;
+});
+
+socket.on('notification', (msg) => {
+    const li = document.createElement('li');
+    li.innerText = `[${clockEl.innerText}] ${msg}`;
+    logList.prepend(li);
+    
+    // Hapus log lama biar gak penuh
+    if (logList.children.length > 20) logList.lastChild.remove();
+});
+
+// --- FUNGSI INTERAKSI ---
+function toggleSignal(stationId, signalId) {
+    // Cek status sekarang lewat class di tombol
+    // Ini cara 'lazy', idealnya tanya state ke server/lokal variable
+    // Tapi untuk game sederhana ini oke.
+    
+    // Kita kirim request TOGGLE ke server.
+    // Server butuh status BARU.
+    // Jadi kita harus tau status LAMA.
+    
+    // Kita cari tombolnya
+    // const btn = event.currentTarget; // agak tricky kalau dipanggil inline
+    // Kita set default aja: Kalau diklik -> coba jadi GREEN. Kalau udah GREEN -> jadi RED.
+    
+    // Tapi tunggu, backend Interlocking.js cuma terima 'setSignal(..., newStatus)'
+    // Jadi frontend harus tentukan statusnya.
+    
+    // Cari tombolnya di DOM
+    const buttons = document.querySelectorAll('.signal-btn');
+    let currentStatus = 'RED';
+    
+    buttons.forEach(b => {
+        const onClickAttr = b.getAttribute('onclick');
+        if (onClickAttr.includes(`'${stationId}', '${signalId}'`)) {
+            if (b.classList.contains('green')) currentStatus = 'GREEN';
+        }
     });
 
-    for(let i = displayTrains.length; i < 3; i++) {
-         const tr = document.createElement('tr');
-         tr.innerHTML = `<td colspan="7" style="height:65px; background:rgba(0,0,0,0.1); border-bottom: 1px solid #333;">&nbsp;</td>`;
-         tbody.appendChild(tr);
-    }
-});
+    const newStatus = currentStatus === 'RED' ? 'GREEN' : 'RED';
+    
+    // Kirim ke server
+    socket.emit('toggle_signal', {
+        stationId: stationId,
+        signalId: signalId,
+        status: newStatus
+    });
+}

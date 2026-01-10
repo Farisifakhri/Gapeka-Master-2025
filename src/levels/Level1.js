@@ -1,67 +1,81 @@
 const stationsData = require('../../data/stations.json');
 const gapekaData = require('../../data/gapeka_lvl1.json');
 const gameLoop = require('../core/GameLoop');
+const TrainManager = require('../core/TrainManager');
+const Interlocking = require('../core/Interlocking');
 
 class Level1 {
     constructor() {
-        this.station = stationsData;
-        this.trains = gapekaData;
-        this.activeTrains = [];
+        this.lineName = stationsData.line_name;
+        this.interlocking = new Interlocking(); // Inisialisasi Sinyal
+        this.trainManager = null; // Nanti diisi pas init
+        this.io = null; // Socket.IO instance
     }
 
-    init() {
-        console.log(`\n--- LEVEL 1: STASIUN ${this.station.name} ---`);
-        console.log(`Misi: Atur persilangan/penyusulan KA Commuter & KA Barang`);
-        console.log(`Kondisi: Jalur 1 (Peron), Jalur 2 (Langsung)\n`);
+    // Dipanggil dari app.js saat server start
+    init(io) {
+        this.io = io;
+        this.trainManager = new TrainManager(io, this.interlocking);
 
-        // Dengar detak waktu dari GameLoop
-        gameLoop.on('tick', (currentTime) => {
-            this.checkSchedule(currentTime);
-            this.updateTrains(currentTime);
+        console.log(`\n=== 🎮 CONTROL CENTER: ${this.lineName.toUpperCase()} ===`);
+        console.log(`Misi: Atur perjalanan KRL & KA Bandara (Duri - Tangerang)`);
+        
+        // --- EVENT LISTENER DARI CLIENT (UI) ---
+        this.io.on('connection', (socket) => {
+            console.log('👨‍✈️ Dispatcher terhubung ke Pusat Kontrol.');
+
+            // Kirim status awal sinyal ke UI pas baru connect
+            socket.emit('init_signals', this.interlocking.getAllSignals());
+
+            // Kalau Dispatcher klik sinyal di UI
+            socket.on('toggle_signal', (data) => {
+                const { stationId, signalId, status } = data;
+                const success = this.interlocking.setSignal(stationId, signalId, status);
+                
+                if (success) {
+                    // Broadcast update ke semua layar
+                    this.io.emit('signal_update', { stationId, signalId, status });
+                }
+            });
+
+            // Kalau Dispatcher menyetujui keberangkatan (Departure)
+            socket.on('dispatch_train', (trainId) => {
+                this.trainManager.dispatchTrain(trainId);
+            });
         });
-    }
 
-    // Cek GAPEKA, apakah ada KA yang harus muncul?
-    checkSchedule(time) {
-        const trainToSpawn = this.trains.find(t => t.schedule.arrival === time);
-        if (trainToSpawn) {
-            console.log(`[RADAR] ⚠️ KA ${trainToSpawn.ka_id} (${trainToSpawn.name}) memanggil Stasiun ${this.station.name}.`);
-            console.log(`[REQUEST] PPKA, minta aman masuk jalur berapa?`);
-            this.activeTrains.push(trainToSpawn);
-            
-            // SIMULASI PLAYER MEMILIH JALUR (Nanti ini inputan user)
-            this.simulatePlayerAction(trainToSpawn); 
-        }
-    }
+        // --- GAME LOOP (Detak Jantung Game) ---
+        // Asumsi: 1 detik dunia nyata = 1 menit di game (biar cepet)
+        // Atau 1 detik = 1 detik (realtime). Kita pakai realtime dulu.
+        let gameTimeHours = 4;
+        let gameTimeMinutes = 20;
+        let gameTimeSeconds = 0;
 
-    // Simulasi Otak PPKA (Bagian yang Aa Fakhri minta)
-    simulatePlayerAction(train) {
-        let jalurPilihan = 0;
-
-        // LOGIC PEMILIHAN JALUR
-        if (train.mustStop) {
-            // Jika KA harus berhenti (Penumpang), WAJIB cari jalur yang hasPlatform = true
-            const peronTrack = this.station.tracks.find(t => t.hasPlatform === true);
-            if(peronTrack.status === 'FREE') {
-                jalurPilihan = peronTrack.id;
-                peronTrack.status = 'OCCUPIED'; // Kunci jalur
+        gameLoop.on('tick', (deltaTime) => {
+            // Update Waktu Game
+            gameTimeSeconds++;
+            if (gameTimeSeconds >= 60) {
+                gameTimeSeconds = 0;
+                gameTimeMinutes++;
             }
-        } else {
-            // Jika KA Barang/Langsung, cari jalur lurus (tipe straight)
-            const directTrack = this.station.tracks.find(t => t.type === 'straight');
-            jalurPilihan = directTrack.id;
-            directTrack.status = 'OCCUPIED';
-        }
+            if (gameTimeMinutes >= 60) {
+                gameTimeMinutes = 0;
+                gameTimeHours++;
+            }
 
-        if (jalurPilihan !== 0) {
-            console.log(`[ACTION] PPKA memberikan Jalur ${jalurPilihan} untuk KA ${train.ka_id}. Sinyal AMAN (Hijau/Kuning).`);
-        } else {
-            console.log(`[DANGER] Tidak ada jalur tersedia! KA ${train.ka_id} tertahan di Sinyal Masuk!`);
-        }
-    }
+            // Format HH:MM:SS
+            const pad = (n) => n < 10 ? '0' + n : n;
+            const timeString = `${pad(gameTimeHours)}:${pad(gameTimeMinutes)}:${pad(gameTimeSeconds)}`;
 
-    updateTrains(time) {
-        // Disini nanti logic keberangkatan (Departure)
+            // Kirim waktu ke UI
+            this.io.emit('time_update', timeString);
+
+            // Update Logika Kereta
+            this.trainManager.updateTrains(timeString);
+        });
+
+        // Mulai Loop
+        gameLoop.start();
     }
 }
 

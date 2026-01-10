@@ -1,36 +1,71 @@
 {
+  "meta": {
+    "line": "Tangerang Line",
+    "version": "Gapeka 2025 Dispatcher"
+  },
   "routes": {
-    "ROUTE_IN_J1": {
-      "id": "ROUTE_IN_J1",
-      "description": "Rute Masuk Jalur 1 (Arah JAKK)",
-      "signal_id": "J1_IN",
-      "target_track": 1,
-      "aspect": "YELLOW",
-      "duration": 10
+    "ROUTE_TNG_OUT_1": {
+      "id": "ROUTE_TNG_OUT_1",
+      "description": "Berangkat Tangerang Jalur 1",
+      "signal_id": "TNG_OUT_1",
+      "target_block": "BLOCK_TTH",
+      "aspect": "GREEN"
     },
-    "ROUTE_OUT_J1": {
-      "id": "ROUTE_OUT_J1",
-      "description": "Rute Keluar Jalur 1 (Arah JAKK)",
-      "signal_id": "J1_OUT",
-      "target_track": 1,
-      "aspect": "GREEN",
-      "duration": 5
+    "ROUTE_TNG_OUT_2": {
+      "id": "ROUTE_TNG_OUT_2",
+      "description": "Berangkat Tangerang Jalur 2",
+      "signal_id": "TNG_OUT_2",
+      "target_block": "BLOCK_TTH",
+      "aspect": "GREEN"
     },
-    "ROUTE_IN_J2": {
-      "id": "ROUTE_IN_J2",
-      "description": "Rute Masuk Jalur 2 (Arah BOO)",
-      "signal_id": "J2_IN",
-      "target_track": 2,
-      "aspect": "YELLOW",
-      "duration": 10
+    "ROUTE_TNG_OUT_3": {
+      "id": "ROUTE_TNG_OUT_3",
+      "description": "Berangkat Tangerang Jalur 3",
+      "signal_id": "TNG_OUT_3",
+      "target_block": "BLOCK_TTH",
+      "aspect": "GREEN"
     },
-    "ROUTE_OUT_J2": {
-      "id": "ROUTE_OUT_J2",
-      "description": "Rute Keluar Jalur 2 (Arah BOO)",
-      "signal_id": "J2_OUT",
-      "target_track": 2,
-      "aspect": "GREEN",
-      "duration": 5
+    "ROUTE_BPR_IN_TNG": {
+      "id": "ROUTE_BPR_IN_TNG",
+      "description": "Masuk Batu Ceper dari Tangerang",
+      "signal_id": "BPR_IN_TNG",
+      "target_block": "TRACK_GL_BPR",
+      "aspect": "GREEN"
+    },
+    "ROUTE_BPR_IN_KA": {
+      "id": "ROUTE_BPR_IN_KA",
+      "description": "Masuk Batu Ceper dari Bandara",
+      "signal_id": "BPR_IN_KA",
+      "target_block": "TRACK_GL_BPR",
+      "aspect": "GREEN"
+    },
+    "ROUTE_RW_IN_1": {
+      "id": "ROUTE_RW_IN_1",
+      "description": "Masuk Rawa Buaya Jalur 1 (Lurus)",
+      "signal_id": "RW_IN_1",
+      "target_block": "TRACK_1_RW",
+      "aspect": "GREEN"
+    },
+    "ROUTE_RW_IN_2": {
+      "id": "ROUTE_RW_IN_2",
+      "description": "Masuk Rawa Buaya Jalur 2 (Belok/Susul)",
+      "signal_id": "RW_IN_2",
+      "target_block": "TRACK_2_RW",
+      "aspect": "YELLOW"
+    },
+    "ROUTE_DU_IN_J5": {
+      "id": "ROUTE_DU_IN_J5",
+      "description": "Masuk Duri Jalur 5 (KRL)",
+      "signal_id": "DU_IN_J5",
+      "target_block": "TRACK_5_DU",
+      "aspect": "YELLOW"
+    },
+    "ROUTE_DU_IN_J4": {
+      "id": "ROUTE_DU_IN_J4",
+      "description": "Masuk Duri Jalur 4 (KA Bandara)",
+      "signal_id": "DU_IN_J4",
+      "target_block": "TRACK_4_DU",
+      "aspect": "YELLOW"
     }
   }
 }
