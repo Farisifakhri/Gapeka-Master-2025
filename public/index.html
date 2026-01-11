@@ -3,57 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tangerang Line Dispatcher</title>
+    <title>Dispatcher KRL Tangerang - Gapeka 2025</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div class="container">
         <header>
-            <div class="brand">
-                <h1>KAIA CONTROL CENTER</h1>
-                <span class="subtitle">TANGERANG LINE DISPATCHER (TNG-DU)</span>
-            </div>
-            <div class="clock-panel">
-                <div id="game-clock">00:00:00</div>
+            <h1>TANGERANG LINE DISPATCHER</h1>
+            <div class="clock-box">
+                <span>WAKTU KA:</span>
+                <span id="game-time">--:--:--</span>
             </div>
         </header>
 
-        <main>
-            <section class="control-grid" id="stations-container">
-                <div class="loading-text">Menghubungkan ke Interlocking System...</div>
-            </section>
+        <div class="map-container">
+            <div class="track-line main-line"></div>
+            <div id="stations-layer"></div>
+            <div id="trains-layer"></div>
+        </div>
 
-            <aside class="monitor-panel">
-                <div class="panel-box">
-                    <h3>🚆 PERKA AKTIF</h3>
-                    <div class="table-responsive">
-                        <table class="train-table">
-                            <thead>
-                                <tr>
-                                    <th>KA</th>
-                                    <th>Posisi</th>
-                                    <th>Kecepatan</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="train-list">
-                                </tbody>
-                        </table>
+        <div class="panel-container">
+            <div class="interlocking-panel">
+                <h2>KONTROL SINYAL (PPKA)</h2>
+                
+                <div class="station-control">
+                    <h3>SINYAL BLOK (PETAK JALAN)</h3>
+                    
+                    <div style="margin-bottom: 10px; border-bottom: 1px dashed #555; padding-bottom: 5px;">
+                        <small style="color: #aaa;">ARAH DURI (DOWN)</small>
+                        <div class="controls-row">
+                            <div class="signal-group-vertical">
+                                <label>RW &#8594; BOI</label>
+                                <button onclick="toggleSignal('BLOCK_1', 'BLK_RW_BOI')" id="btn-BLK_RW_BOI" class="sig-btn red">BLOK 1</button>
+                            </div>
+                            <div class="signal-group-vertical">
+                                <label>BOI &#8594; TKO</label>
+                                <button onclick="toggleSignal('BLOCK_2', 'BLK_BOI_TKO')" id="btn-BLK_BOI_TKO" class="sig-btn red">BLOK 2</button>
+                            </div>
+                            <div class="signal-group-vertical">
+                                <label>TKO &#8594; PSG</label>
+                                <button onclick="toggleSignal('BLOCK_3', 'BLK_TKO_PSG')" id="btn-BLK_TKO_PSG" class="sig-btn red">BLOK 3</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <small style="color: #aaa;">ARAH TANGERANG (UP)</small>
+                        <div class="controls-row">
+                            <div class="signal-group-vertical">
+                                <label>PSG &#8594; TKO</label>
+                                <button onclick="toggleSignal('BLOCK_3', 'BLK_PSG_TKO')" id="btn-BLK_PSG_TKO" class="sig-btn red">BLOK 3B</button>
+                            </div>
+                            <div class="signal-group-vertical">
+                                <label>TKO &#8594; BOI</label>
+                                <button onclick="toggleSignal('BLOCK_2', 'BLK_TKO_BOI')" id="btn-BLK_TKO_BOI" class="sig-btn red">BLOK 2B</button>
+                            </div>
+                            <div class="signal-group-vertical">
+                                <label>BOI &#8594; RW</label>
+                                <button onclick="toggleSignal('BLOCK_1', 'BLK_BOI_RW')" id="btn-BLK_BOI_RW" class="sig-btn red">BLOK 1B</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="panel-box log-box">
-                    <h3>📟 NOTIFIKASI</h3>
-                    <ul id="log-list">
-                        <li>System Ready...</li>
-                    </ul>
+                <div class="station-control" id="ctrl-rw">
+                    <h3>RAWA BUAYA (RW)</h3>
+                    <div class="signal-group">
+                        <label>Dr TNG:</label>
+                        <button onclick="toggleSignal('RW', 'RW_IN_TNG_1')" id="btn-RW_IN_TNG_1" class="sig-btn red">Msk J1</button>
+                        <button onclick="toggleSignal('RW', 'RW_IN_TNG_2')" id="btn-RW_IN_TNG_2" class="sig-btn red">Msk J2</button>
+                    </div>
+                    <div class="signal-group">
+                        <label>Ke BOI:</label>
+                        <button onclick="toggleSignal('RW', 'RW_OUT_DU_1')" id="btn-RW_OUT_DU_1" class="sig-btn red">Klr J1</button>
+                        <button onclick="toggleSignal('RW', 'RW_OUT_DU_2')" id="btn-RW_OUT_DU_2" class="sig-btn red">Klr J2</button>
+                    </div>
+                    <div class="signal-group">
+                        <label>Dr DU:</label>
+                        <button onclick="toggleSignal('RW', 'RW_IN_DU_3')" id="btn-RW_IN_DU_3" class="sig-btn red">Msk J3</button>
+                        <button onclick="toggleSignal('RW', 'RW_IN_DU_2')" id="btn-RW_IN_DU_2" class="sig-btn red">Msk J2</button>
+                    </div>
+                     <div class="signal-group">
+                        <label>Ke KDS:</label>
+                        <button onclick="toggleSignal('RW', 'RW_OUT_TNG_3')" id="btn-RW_OUT_TNG_3" class="sig-btn red">Klr J3</button>
+                    </div>
                 </div>
-            </aside>
-        </main>
-    </div>
 
-    <script src="/socket.io/socket.io.js"></script>
+                <div class="controls-row">
+                    <div class="station-control" id="ctrl-boi">
+                        <h3>BOJONG INDAH</h3>
+                        <div class="signal-group-vertical"><label>Ke DU:</label><button onclick="toggleSignal('BOI', 'BOI_IN_TNG')" id="btn-BOI_IN_TNG" class="sig-btn red">Masuk</button><button onclick="toggleSignal('BOI', 'BOI_OUT_DU')" id="btn-BOI_OUT_DU" class="sig-btn red">Keluar</button></div>
+                        <hr>
+                        <div class="signal-group-vertical"><label>Ke TNG:</label><button onclick="toggleSignal('BOI', 'BOI_IN_DU')" id="btn-BOI_IN_DU" class="sig-btn red">Masuk</button><button onclick="toggleSignal('BOI', 'BOI_OUT_TNG')" id="btn-BOI_OUT_TNG" class="sig-btn red">Keluar</button></div>
+                    </div>
+                    <div class="station-control" id="ctrl-tko">
+                        <h3>TAMAN KOTA</h3>
+                        <div class="signal-group-vertical"><label>Ke DU:</label><button onclick="toggleSignal('TKO', 'TKO_IN_TNG')" id="btn-TKO_IN_TNG" class="sig-btn red">Masuk</button><button onclick="toggleSignal('TKO', 'TKO_OUT_DU')" id="btn-TKO_OUT_DU" class="sig-btn red">Keluar</button></div>
+                        <hr>
+                        <div class="signal-group-vertical"><label>Ke TNG:</label><button onclick="toggleSignal('TKO', 'TKO_IN_DU')" id="btn-TKO_IN_DU" class="sig-btn red">Masuk</button><button onclick="toggleSignal('TKO', 'TKO_OUT_TNG')" id="btn-TKO_OUT_TNG" class="sig-btn red">Keluar</button></div>
+                    </div>
+                    <div class="station-control" id="ctrl-psg">
+                        <h3>PESING</h3>
+                        <div class="signal-group-vertical"><label>Ke DU:</label><button onclick="toggleSignal('PSG', 'PSG_IN_TNG')" id="btn-PSG_IN_TNG" class="sig-btn red">Masuk</button><button onclick="toggleSignal('PSG', 'PSG_OUT_DU')" id="btn-PSG_OUT_DU" class="sig-btn red">Keluar</button></div>
+                        <hr>
+                        <div class="signal-group-vertical"><label>Ke TNG:</label><button onclick="toggleSignal('PSG', 'PSG_IN_DU')" id="btn-PSG_IN_DU" class="sig-btn red">Masuk</button><button onclick="toggleSignal('PSG', 'PSG_OUT_TNG')" id="btn-PSG_OUT_TNG" class="sig-btn red">Keluar</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="monitor-panel">
+                <div class="schedule-box">
+                    <h3>KA AKTIF</h3>
+                    <table>
+                        <thead><tr><th>KA</th><th>Posisi</th><th>Speed</th><th>Status</th></tr></thead>
+                        <tbody id="train-table-body"></tbody>
+                    </table>
+                </div>
+                <div class="log-box">
+                    <h3>NOTIFIKASI</h3>
+                    <ul id="notification-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>

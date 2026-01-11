@@ -1,71 +1,180 @@
 {
   "meta": {
     "line": "Tangerang Line",
-    "version": "Gapeka 2025 Dispatcher"
+    "version": "Gapeka 2025 Dispatcher - Full Control",
+    "last_updated": "2025-06-20"
   },
   "routes": {
+    "--- STASIUN TANGERANG (TNG) ---": {},
     "ROUTE_TNG_OUT_1": {
       "id": "ROUTE_TNG_OUT_1",
-      "description": "Berangkat Tangerang Jalur 1",
+      "description": "Berangkat TNG Jalur 1",
       "signal_id": "TNG_OUT_1",
-      "target_block": "BLOCK_TTH",
+      "target_block": "BLOCK_TNG_TTH",
       "aspect": "GREEN"
     },
     "ROUTE_TNG_OUT_2": {
       "id": "ROUTE_TNG_OUT_2",
-      "description": "Berangkat Tangerang Jalur 2",
+      "description": "Berangkat TNG Jalur 2",
       "signal_id": "TNG_OUT_2",
-      "target_block": "BLOCK_TTH",
+      "target_block": "BLOCK_TNG_TTH",
       "aspect": "GREEN"
     },
     "ROUTE_TNG_OUT_3": {
       "id": "ROUTE_TNG_OUT_3",
-      "description": "Berangkat Tangerang Jalur 3",
+      "description": "Berangkat TNG Jalur 3",
       "signal_id": "TNG_OUT_3",
-      "target_block": "BLOCK_TTH",
+      "target_block": "BLOCK_TNG_TTH",
       "aspect": "GREEN"
     },
+
+    "--- STASIUN BATU CEPER (BPR) ---": {},
     "ROUTE_BPR_IN_TNG": {
       "id": "ROUTE_BPR_IN_TNG",
-      "description": "Masuk Batu Ceper dari Tangerang",
+      "description": "Masuk BPR dari Tangerang",
       "signal_id": "BPR_IN_TNG",
       "target_block": "TRACK_GL_BPR",
       "aspect": "GREEN"
     },
     "ROUTE_BPR_IN_KA": {
       "id": "ROUTE_BPR_IN_KA",
-      "description": "Masuk Batu Ceper dari Bandara",
+      "description": "Masuk BPR dari Bandara (BST)",
       "signal_id": "BPR_IN_KA",
       "target_block": "TRACK_GL_BPR",
       "aspect": "GREEN"
     },
-    "ROUTE_RW_IN_1": {
-      "id": "ROUTE_RW_IN_1",
-      "description": "Masuk Rawa Buaya Jalur 1 (Lurus)",
-      "signal_id": "RW_IN_1",
+    "ROUTE_BPR_OUT_RW": {
+      "id": "ROUTE_BPR_OUT_RW",
+      "description": "Keluar BPR arah Rawa Buaya",
+      "signal_id": "BPR_OUT_RW",
+      "target_block": "BLOCK_BPR_RW",
+      "aspect": "GREEN"
+    },
+
+    "--- STASIUN RAWA BUAYA (RW) - ARAH DURI (DOWN) ---": {},
+    "ROUTE_RW_IN_TNG_1": {
+      "id": "ROUTE_RW_IN_TNG_1",
+      "description": "Masuk RW Jalur 1 (Lurus)",
+      "signal_id": "RW_IN_TNG_1",
       "target_block": "TRACK_1_RW",
       "aspect": "GREEN"
     },
-    "ROUTE_RW_IN_2": {
-      "id": "ROUTE_RW_IN_2",
-      "description": "Masuk Rawa Buaya Jalur 2 (Belok/Susul)",
-      "signal_id": "RW_IN_2",
+    "ROUTE_RW_IN_TNG_2": {
+      "id": "ROUTE_RW_IN_TNG_2",
+      "description": "Masuk RW Jalur 2 (Belok/Susul)",
+      "signal_id": "RW_IN_TNG_2",
       "target_block": "TRACK_2_RW",
-      "aspect": "YELLOW"
+      "aspect": "YELLOW",
+      "speed_limit": 30
     },
+    "ROUTE_RW_OUT_DU_1": {
+      "id": "ROUTE_RW_OUT_DU_1",
+      "description": "Keluar RW Jalur 1 arah BOI",
+      "signal_id": "RW_OUT_DU_1",
+      "target_block": "BLOCK_RW_BOI",
+      "aspect": "GREEN"
+    },
+    "ROUTE_RW_OUT_DU_2": {
+      "id": "ROUTE_RW_OUT_DU_2",
+      "description": "Keluar RW Jalur 2 arah BOI",
+      "signal_id": "RW_OUT_DU_2",
+      "target_block": "BLOCK_RW_BOI",
+      "aspect": "YELLOW",
+      "speed_limit": 30
+    },
+
+    "--- STASIUN RAWA BUAYA (RW) - ARAH TANGERANG (UP) ---": {},
+    "ROUTE_RW_IN_DU_3": {
+      "id": "ROUTE_RW_IN_DU_3",
+      "description": "Masuk RW Jalur 3 (Lurus dr DU)",
+      "signal_id": "RW_IN_DU_3",
+      "target_block": "TRACK_3_RW",
+      "aspect": "GREEN"
+    },
+    "ROUTE_RW_IN_DU_2": {
+      "id": "ROUTE_RW_IN_DU_2",
+      "description": "Masuk RW Jalur 2 (Belok dr DU)",
+      "signal_id": "RW_IN_DU_2",
+      "target_block": "TRACK_2_RW",
+      "aspect": "YELLOW",
+      "speed_limit": 30
+    },
+    "ROUTE_RW_OUT_TNG_3": {
+      "id": "ROUTE_RW_OUT_TNG_3",
+      "description": "Keluar RW Jalur 3 arah KDS",
+      "signal_id": "RW_OUT_TNG_3",
+      "target_block": "BLOCK_RW_KDS",
+      "aspect": "GREEN"
+    },
+
+    "--- PETAK JALAN (BOJONG INDAH - TAMAN KOTA - PESING) ---": {},
+    "ROUTE_BOI_IN_TNG": {
+      "id": "ROUTE_BOI_IN_TNG",
+      "signal_id": "BOI_IN_TNG",
+      "target_block": "PLATFORM_BOI",
+      "aspect": "GREEN"
+    },
+    "ROUTE_BOI_OUT_DU": {
+      "id": "ROUTE_BOI_OUT_DU",
+      "signal_id": "BOI_OUT_DU",
+      "target_block": "BLOCK_BOI_TKO",
+      "aspect": "GREEN"
+    },
+    "ROUTE_TKO_IN_TNG": {
+      "id": "ROUTE_TKO_IN_TNG",
+      "signal_id": "TKO_IN_TNG",
+      "target_block": "PLATFORM_TKO",
+      "aspect": "GREEN"
+    },
+    "ROUTE_TKO_OUT_DU": {
+      "id": "ROUTE_TKO_OUT_DU",
+      "signal_id": "TKO_OUT_DU",
+      "target_block": "BLOCK_TKO_PSG",
+      "aspect": "GREEN"
+    },
+    "ROUTE_PSG_IN_TNG": {
+      "id": "ROUTE_PSG_IN_TNG",
+      "signal_id": "PSG_IN_TNG",
+      "target_block": "PLATFORM_PSG",
+      "aspect": "GREEN"
+    },
+    "ROUTE_PSG_OUT_DU": {
+      "id": "ROUTE_PSG_OUT_DU",
+      "signal_id": "PSG_OUT_DU",
+      "target_block": "BLOCK_PSG_GRG",
+      "aspect": "GREEN"
+    },
+
+    "--- STASIUN DURI (DU) ---": {},
     "ROUTE_DU_IN_J5": {
       "id": "ROUTE_DU_IN_J5",
       "description": "Masuk Duri Jalur 5 (KRL)",
       "signal_id": "DU_IN_J5",
       "target_block": "TRACK_5_DU",
-      "aspect": "YELLOW"
+      "aspect": "YELLOW",
+      "note": "Kecepatan terbatas masuk wesel"
     },
     "ROUTE_DU_IN_J4": {
       "id": "ROUTE_DU_IN_J4",
       "description": "Masuk Duri Jalur 4 (KA Bandara)",
       "signal_id": "DU_IN_J4",
       "target_block": "TRACK_4_DU",
-      "aspect": "YELLOW"
+      "aspect": "YELLOW",
+      "note": "Kecepatan terbatas masuk wesel"
+    },
+    "ROUTE_DU_OUT_J5": {
+      "id": "ROUTE_DU_OUT_J5",
+      "description": "Berangkat Duri Jalur 5",
+      "signal_id": "DU_OUT_J5",
+      "target_block": "BLOCK_DU_GRG",
+      "aspect": "GREEN"
+    },
+    "ROUTE_DU_OUT_J4": {
+      "id": "ROUTE_DU_OUT_J4",
+      "description": "Berangkat Duri Jalur 4",
+      "signal_id": "DU_OUT_J4",
+      "target_block": "BLOCK_DU_GRG",
+      "aspect": "GREEN"
     }
   }
 }

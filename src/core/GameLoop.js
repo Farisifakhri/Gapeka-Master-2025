@@ -1,30 +1,38 @@
-const EventEmitter = require('events');
-
-class GameLoop extends EventEmitter {
-    constructor(trainManager, interlocking, io) {
-        super();
-        this.trainManager = trainManager;
-        this.interlocking = interlocking;
+class GameLoop {
+    constructor(io, trainManager, signalManager) {
         this.io = io;
-        
-        // --- SETTING WAKTU (Mulai jam 04:00 pagi sesuai Gapeka) ---
-        // Biar langsung kerasa simulasi paginya
-        this.gameTime = this.timeToSeconds("04:00:00"); 
-        
-        console.log(`🕒 GAME STARTED: Waktu simulasi mulai 04:00:00`);
-        
-        this.speedFactor = 1; // 1 detik = 1 detik (Realtime)
+        this.trainManager = trainManager;
+        this.signalManager = signalManager;
         this.isRunning = false;
-        this.interval = null;
+        
+        // SET WAKTU SESUAI REAL-TIME SAAT INI
+        const now = new Date();
+        this.gameTime = this.formatTime(now);
+        
+        this.lastUpdate = Date.now();
     }
 
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
         
+        console.log(`[GAME] Started at Real Time: ${this.gameTime}`);
+        
         this.interval = setInterval(() => {
             this.update();
-        }, 1000 / this.speedFactor);
+        }, 1000); // 1 detik dunia nyata = 1 detik game
+    }
+
+    update() {
+        // Update Waktu (Increment 1 detik)
+        this.incrementTime();
+        
+        // Update Logika Kereta & Sinyal
+        this.trainManager.updateTrains(this.gameTime);
+        // this.signalManager.updateSignals(); // Jika ada logika auto-signal
+
+        // Kirim Waktu ke Client
+        this.io.emit('time_update', this.gameTime);
     }
 
     stop() {
@@ -32,38 +40,26 @@ class GameLoop extends EventEmitter {
         clearInterval(this.interval);
     }
 
-    update() {
-        // 1. Update Waktu
-        this.gameTime++;
-        if (this.gameTime >= 86400) this.gameTime = 0; // Reset 24:00
-
-        const timeString = this.secondsToTime(this.gameTime);
-
-        // 2. Emit Tick (Internal)
-        this.emit('tick', timeString);
-
-        // 3. Broadcast Waktu ke Client (UI)
-        this.io.emit('time_update', timeString);
-
-        // 4. Update Logika Kereta (Physics & Movement)
-        // TrainManager akan membaca sinyal sendiri dari Interlocking saat update
-        this.trainManager.updateTrains(timeString);
+    incrementTime() {
+        let [hh, mm, ss] = this.gameTime.split(':').map(Number);
+        ss++;
+        if (ss >= 60) { ss = 0; mm++; }
+        if (mm >= 60) { mm = 0; hh++; }
+        if (hh >= 24) { hh = 0; }
         
-        // CATATAN: 
-        // updateSignalChain DIHAPUS karena sistem sekarang Manual Dispatcher.
-        // TrainManager sudah otomatis ngerem kalau sinyal merah.
+        this.gameTime = [
+            hh.toString().padStart(2, '0'),
+            mm.toString().padStart(2, '0'),
+            ss.toString().padStart(2, '0')
+        ].join(':');
     }
-
-    timeToSeconds(timeStr) {
-        const [h, m, s] = timeStr.split(':').map(Number);
-        return (h * 3600) + (m * 60) + (s || 0);
-    }
-
-    secondsToTime(totalSeconds) {
-        const h = Math.floor(totalSeconds / 3600);
-        const m = Math.floor((totalSeconds % 3600) / 60);
-        const s = totalSeconds % 60;
-        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    
+    formatTime(date) {
+        return [
+            date.getHours().toString().padStart(2, '0'),
+            date.getMinutes().toString().padStart(2, '0'),
+            date.getSeconds().toString().padStart(2, '0')
+        ].join(':');
     }
 }
 

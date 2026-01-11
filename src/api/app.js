@@ -3,7 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 
-// 1. Import Class Core
+// Import Class Core
 const TrainManager = require('../core/TrainManager');
 const Interlocking = require('../core/Interlocking');
 const GameLoop = require('../core/GameLoop');
@@ -17,39 +17,38 @@ app.use(express.static(path.join(__dirname, '../../public')));
 app.use(express.json());
 
 // --- INISIALISASI GAME ---
-
-// 1. Interlocking (Sinyal & Wesel)
-// Tidak perlu pass stationsData, dia load sendiri dari stations.json
 const interlocking = new Interlocking(); 
-
-// 2. TrainManager (Logika Kereta)
-// Butuh IO buat lapor posisi, dan Interlocking buat cek sinyal
 const trainManager = new TrainManager(io, interlocking); 
 
-// 3. GameLoop (Detak Jantung Waktu)
-const gameLoop = new GameLoop(trainManager, interlocking, io);
+// [FIX] Urutan parameter HARUS: (io, trainManager, interlocking)
+// Sebelumnya terbalik, makanya updateTrains error/tidak jalan
+const gameLoop = new GameLoop(io, trainManager, interlocking);
 
 // --- EVENT LISTENER ---
-
-// Socket.io Connection (Interaksi UI Dispatcher)
 io.on('connection', (socket) => {
     console.log('👨‍✈️ Dispatcher Terhubung.');
 
-    // 1. Kirim Status Sinyal Awal (Biar UI sinkron)
+    // Kirim Data Awal
     socket.emit('init_signals', interlocking.getAllSignals());
+    
+    // Kirim Posisi Kereta Terakhir (Supaya gak nunggu update detik berikutnya)
+    socket.emit('train_update', trainManager.activeTrains);
 
-    // 2. Dispatcher Klik Sinyal (Toggle Merah/Hijau)
+    // Toggle Sinyal
     socket.on('toggle_signal', (data) => {
-        const { stationId, signalId, status } = data;
-        
-        // Update di Server
-        const success = interlocking.setSignal(stationId, signalId, status);
+        const { stationId, signalId, targetStatus } = data;
+        const success = interlocking.setSignal(stationId, signalId, targetStatus);
         
         if (success) {
-            // Update balik ke UI (Biar warna tombol berubah)
-            // Kirim stationId juga biar script.js bisa cari tombolnya
-            io.emit('signal_update', { stationId, signalId, status });
+            io.emit('signal_update', { stationId, signalId, status: targetStatus });
         }
+    });
+    
+    // [FITUR BARU] Manual Spawn untuk Testing
+    // Ketik di console browser: socket.emit('debug_spawn')
+    socket.on('debug_spawn', () => {
+        console.log("🛠️ DEBUG: Memaksa spawn kereta uji coba...");
+        trainManager.forceSpawnDebug();
     });
 
     socket.on('disconnect', () => {
@@ -57,20 +56,10 @@ io.on('connection', (socket) => {
     });
 });
 
-// Debug Log Tick (Opsional, matikan kalau spam)
-gameLoop.on('tick', (timeString) => {
-    // console.log("Tick:", timeString); 
-});
-
-// Start Game Loop
+// Start Loop
 gameLoop.start();
 
-// Start Server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`\n==================================================`);
-    console.log(`🚄 TANGERANG LINE DISPATCHER SYSTEM (GAPEKA 2025)`);
-    console.log(`==================================================`);
-    console.log(`Server aktif di http://localhost:${PORT}`);
-    console.log(`Siap menerima perintah Dispatcher...`);
+    console.log(`✅ Server berjalan di http://localhost:${PORT}`);
 });

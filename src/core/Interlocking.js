@@ -2,14 +2,12 @@ const stationsData = require('../../data/stations.json');
 
 class Interlocking {
     constructor() {
-        // Load data stasiun yang bisa dikendalikan (TNG, BPR, RW, DU)
         this.stations = stationsData.controlled_stations;
         this.initSignals();
     }
 
     initSignals() {
         console.log("🚦 Sistem Interlocking Tangerang Line Aktif.");
-        // Reset semua sinyal ke MERAH saat server nyala
         for (const stnId in this.stations) {
             const signals = this.stations[stnId].signals;
             for (const sigId in signals) {
@@ -18,29 +16,50 @@ class Interlocking {
         }
     }
 
-    // Fungsi untuk mengubah status sinyal (dipanggil dari UI/Client)
-    setSignal(stationId, signalId, newStatus) {
-        if (this.stations[stationId] && this.stations[stationId].signals[signalId]) {
-            this.stations[stationId].signals[signalId].status = newStatus;
-            console.log(`[WESEL] Sinyal ${signalId} di ${stationId} diganti ke ${newStatus}`);
+    // UPDATE: setSignal sekarang bisa mencari by Key ATAU by ID
+    setSignal(stationId, lookupId, newStatus) {
+        if (!this.stations[stationId]) {
+            console.log(`[ERROR] Stasiun tidak ditemukan: ${stationId}`);
+            return false;
+        }
+
+        const signals = this.stations[stationId].signals;
+
+        // CARA 1: Cek by Key (Langsung)
+        if (signals[lookupId]) {
+            signals[lookupId].status = newStatus;
+            console.log(`[WESEL] Sinyal ${lookupId} di ${stationId} -> ${newStatus}`);
             return true;
         }
-        console.log(`[ERROR] Sinyal tidak ditemukan: ${stationId} - ${signalId}`);
+
+        // CARA 2: Cari by ID (Looping) - Backup jika key beda
+        for (const key in signals) {
+            if (signals[key].id === lookupId) {
+                signals[key].status = newStatus;
+                console.log(`[WESEL] Sinyal (ID) ${lookupId} di ${stationId} -> ${newStatus}`);
+                return true;
+            }
+        }
+
+        console.log(`[ERROR] Sinyal tidak ditemukan: ${stationId} - ${lookupId}`);
         return false;
     }
 
-    // Fungsi untuk membaca status sinyal (dipanggil oleh Kereta)
-    getSignalStatus(stationId, signalId) {
-        // Validasi input
-        if (!stationId || !signalId) return 'GREEN'; // Default aman di petak jalan
+    getSignalStatus(stationId, lookupId) {
+        if (!this.stations[stationId]) return 'RED';
+        const signals = this.stations[stationId].signals;
 
-        if (this.stations[stationId] && this.stations[stationId].signals[signalId]) {
-            return this.stations[stationId].signals[signalId].status;
+        if (signals[lookupId]) return signals[lookupId].status;
+
+        for (const key in signals) {
+            if (signals[key].id === lookupId) {
+                return signals[key].status;
+            }
         }
-        return 'RED'; // Default bahaya jika sinyal tidak dikenal
+
+        return 'RED';
     }
 
-    // Fungsi helper untuk mengambil semua status sinyal (buat dikirim ke UI)
     getAllSignals() {
         return this.stations;
     }

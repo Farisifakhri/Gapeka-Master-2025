@@ -1,73 +1,88 @@
 {
-  "line_name": "Tangerang Line (Brown Line)",
-  "description": "Dispatcher Control System - Gapeka 2025 (Revised Layout)",
+  "line_name": "Tangerang Line (Full Control)",
+  "description": "Gapeka 2025 - Automatic Block System",
   "controlled_stations": {
-    "TNG": {
-      "name": "Tangerang",
-      "km": 19.3,
-      "type": "TERMINUS",
-      "tracks": {
-        "1": "PERON_UTAMA",
-        "2": "PERON_PULAU",
-        "3": "PERON_PULAU",
-        "5": "STABLING"
-      },
-      "signals": {
-        "OUT_1": { "id": "TNG_OUT_1", "label": "Keluar J1", "status": "RED", "target": "BLOCK_TTH" },
-        "OUT_2": { "id": "TNG_OUT_2", "label": "Keluar J2", "status": "RED", "target": "BLOCK_TTH" },
-        "OUT_3": { "id": "TNG_OUT_3", "label": "Keluar J3", "status": "RED", "target": "BLOCK_TTH" }
-      }
-    },
-    "BPR": {
-      "name": "Batu Ceper",
-      "km": 15.7,
-      "type": "JUNCTION",
-      "note": "Awas KA Bandara Gabung Jalur!",
-      "signals": {
-        "IN_AIRPORT": { "id": "BPR_IN_KA", "label": "Masuk dr Bandara", "status": "RED", "target": "TRACK_GL_BPR" },
-        "IN_TNG": { "id": "BPR_IN_TNG", "label": "Masuk dr TNG", "status": "GREEN", "target": "TRACK_GL_BPR" }
-      }
-    },
     "RW": {
       "name": "Rawa Buaya",
       "km": 10.0,
-      "type": "OVERTAKE",
-      "note": "Jalur 2 Khusus KA Bandara",
+      "type": "STATION",
+      "class": "B",
+      "tracks": { "1": "Lurus Duri", "2": "Belok/Parkir", "3": "Lurus Tng" },
       "signals": {
-        "IN_KRL": { 
-          "id": "RW_IN_1", 
-          "label": "Masuk Jalur 1 (KRL)", 
-          "status": "GREEN", 
-          "target": "TRACK_1_RW",
-          "desc": "Jalur Utama KRL ke Duri"
-        },
-        "IN_BANDARA": { 
-          "id": "RW_IN_2", 
-          "label": "Masuk Jalur 2 (KA Bandara)", 
-          "status": "RED", 
-          "target": "TRACK_2_RW",
-          "desc": "Jalur Susul/Langsung KA Bandara"
-        }
+        "RW_IN_TNG_1": { "id": "RW_IN_TNG_1", "label": "Msk J1 (dr TNG)", "status": "RED", "target": "TRACK_1_RW", "aspect": "RED" },
+        "RW_IN_TNG_2": { "id": "RW_IN_TNG_2", "label": "Msk J2 (dr TNG)", "status": "RED", "target": "TRACK_2_RW", "limit": 30 },
+        "RW_OUT_DU_1": { "id": "RW_OUT_DU_1", "label": "Klr J1 (ke BOI)", "status": "RED", "target": "BLOCK_RW_BOI" },
+        "RW_OUT_DU_2": { "id": "RW_OUT_DU_2", "label": "Klr J2 (ke BOI)", "status": "RED", "target": "BLOCK_RW_BOI", "limit": 30 },
+        
+        "RW_IN_DU_3": { "id": "RW_IN_DU_3", "label": "Msk J3 (dr DU)", "status": "RED", "target": "TRACK_3_RW" },
+        "RW_IN_DU_2": { "id": "RW_IN_DU_2", "label": "Msk J2 (dr DU)", "status": "RED", "target": "TRACK_2_RW", "limit": 30 },
+        "RW_OUT_TNG_3": { "id": "RW_OUT_TNG_3", "label": "Klr J3 (ke TNG)", "status": "RED", "target": "BLOCK_RW_KDS" }
       }
     },
-    "DU": {
-      "name": "Duri",
-      "km": 0.0,
-      "type": "TERMINUS",
-      "note": "Jalur 5 KRL, Jalur 4 KA Bandara",
+    
+    "BLOCK_1": {
+      "name": "Blok RW-BOI (Tengah)",
+      "km": 8.9,
+      "type": "BLOCK",
       "signals": {
-        "IN_J5": { 
-          "id": "DU_IN_J5", 
-          "label": "Masuk Jalur 5 (KRL Only)", 
-          "status": "RED", 
-          "target": "TRACK_5_DU" 
-        },
-        "IN_J4": { 
-          "id": "DU_IN_J4", 
-          "label": "Masuk Jalur 4 (KA Bandara-MRI)", 
-          "status": "RED", 
-          "target": "TRACK_4_DU" 
-        }
+        "BLK_RW_BOI": { "id": "BLK_RW_BOI", "label": "Blok RW->BOI", "status": "RED" },
+        "BLK_BOI_RW": { "id": "BLK_BOI_RW", "label": "Blok BOI->RW", "status": "RED" }
+      }
+    },
+
+    "BOI": {
+      "name": "Bojong Indah",
+      "km": 7.8,
+      "type": "STATION",
+      "signals": {
+        "BOI_IN_TNG": { "id": "BOI_IN_TNG", "label": "Msk dr RW", "status": "RED" },
+        "BOI_OUT_DU": { "id": "BOI_OUT_DU", "label": "Klr ke TKO", "status": "RED" },
+        "BOI_IN_DU": { "id": "BOI_IN_DU", "label": "Msk dr TKO", "status": "RED" },
+        "BOI_OUT_TNG": { "id": "BOI_OUT_TNG", "label": "Klr ke RW", "status": "RED" }
+      }
+    },
+
+    "BLOCK_2": {
+      "name": "Blok BOI-TKO (Tengah)",
+      "km": 6.5,
+      "type": "BLOCK",
+      "signals": {
+        "BLK_BOI_TKO": { "id": "BLK_BOI_TKO", "label": "Blok BOI->TKO", "status": "RED" },
+        "BLK_TKO_BOI": { "id": "BLK_TKO_BOI", "label": "Blok TKO->BOI", "status": "RED" }
+      }
+    },
+
+    "TKO": {
+      "name": "Taman Kota",
+      "km": 5.2,
+      "type": "STATION",
+      "signals": {
+        "TKO_IN_TNG": { "id": "TKO_IN_TNG", "label": "Msk dr BOI", "status": "RED" },
+        "TKO_OUT_DU": { "id": "TKO_OUT_DU", "label": "Klr ke PSG", "status": "RED" },
+        "TKO_IN_DU": { "id": "TKO_IN_DU", "label": "Msk dr PSG", "status": "RED" },
+        "TKO_OUT_TNG": { "id": "TKO_OUT_TNG", "label": "Klr ke BOI", "status": "RED" }
+      }
+    },
+
+    "BLOCK_3": {
+      "name": "Blok TKO-PSG (Tengah)",
+      "km": 4.5,
+      "type": "BLOCK",
+      "signals": {
+        "BLK_TKO_PSG": { "id": "BLK_TKO_PSG", "label": "Blok TKO->PSG", "status": "RED" },
+        "BLK_PSG_TKO": { "id": "BLK_PSG_TKO", "label": "Blok PSG->TKO", "status": "RED" }
+      }
+    },
+
+    "PSG": {
+      "name": "Pesing",
+      "km": 3.7,
+      "type": "STATION",
+      "signals": {
+        "PSG_IN_TNG": { "id": "PSG_IN_TNG", "label": "Msk dr TKO", "status": "RED" },
+        "PSG_OUT_DU": { "id": "PSG_OUT_DU", "label": "Klr ke GRG", "status": "RED" },
+        "PSG_IN_DU": { "id": "PSG_IN_DU", "label": "Msk dr GRG", "status": "RED" },
+        "PSG_OUT_TNG": { "id": "PSG_OUT_TNG", "label": "Klr ke TKO", "status": "RED" }
       }
     }
   }
