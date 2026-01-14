@@ -1,268 +1,320 @@
 :root {
-    --bg-color: #1a1a1a;
-    --panel-bg: #2d2d2d;
-    --text-color: #e0e0e0;
-    --accent-red: #ff4444;
-    --accent-green: #00cc66;
-    --accent-yellow: #ffcc00;
-    --track-color: #555;
+    --bg-deep: #050a14;
+    --panel-glass: rgba(16, 23, 41, 0.85);
+    --border-glass: rgba(56, 189, 248, 0.3);
+    --neon-cyan: #0ea5e9;
+    --neon-green: #10b981;
+    --neon-amber: #f59e0b;
+    --neon-red: #ef4444;
+    --text-main: #e0f2fe;
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--bg-color);
-    color: var(--text-color);
     margin: 0;
-    padding: 10px;
+    font-family: 'Rajdhani', sans-serif;
+    background-color: var(--bg-deep);
+    color: var(--text-main);
+    overflow: hidden;
+}
+
+/* --- EFEK CRT / SCANLINE (Biar kayak layar monitor) --- */
+body::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 9999;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}
+
+/* --- LAYOUT UTAMA --- */
+#game-layer {
+    display: flex;
+    flex-direction: column;
     height: 100vh;
-    box-sizing: border-box;
-    overflow: hidden;
 }
 
-.container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
+#game-layer.hidden { display: none; }
 
-header {
+/* 1. TOP BAR (Header) */
+.top-bar {
+    height: 60px;
+    background: var(--panel-glass);
+    border-bottom: 1px solid var(--border-glass);
+    backdrop-filter: blur(10px);
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    background: var(--panel-bg);
-    border-bottom: 2px solid #444;
-}
-
-.clock-box {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: var(--accent-yellow);
-    background: #000;
-    padding: 5px 15px;
-    border-radius: 5px;
-}
-
-/* --- MAP AREA --- */
-.map-container {
-    position: relative;
-    height: 200px;
-    background: #111;
-    margin: 10px 0;
-    border: 1px solid #444;
-    overflow-x: auto; /* Scroll kalau layar kecil */
-}
-
-/* Garis Rel Utama (Double Track) */
-.track-line {
-    position: absolute;
-    top: 50%;
-    left: 20px;
-    right: 20px;
-    height: 4px;
-    background: var(--track-color);
-    transform: translateY(-50%);
-}
-
-/* Stasiun Box */
-.station-marker {
-    position: absolute;
-    top: 40px; /* Di atas rel */
-    width: 80px;
-    text-align: center;
-    border: 1px solid #666;
-    background: #222;
-    padding: 5px;
-    font-size: 0.8rem;
-    border-radius: 4px;
-    z-index: 1;
-}
-
-.station-marker.controlled {
-    border-color: var(--accent-yellow);
-    box-shadow: 0 0 5px var(--accent-yellow);
-}
-
-/* Sinyal di Peta */
-.map-signal {
-    position: absolute;
-    top: 52%; /* Sedikit di bawah rel */
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: gray;
-    border: 1px solid #fff;
-    z-index: 2;
-}
-
-/* Kereta */
-.train-marker {
-    position: absolute;
-    top: 48%;
-    transform: translate(-50%, -50%);
-    width: 40px;
-    height: 20px;
-    background: var(--accent-red); /* Default KRL */
-    color: #fff;
-    font-size: 0.7rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 3px;
-    border: 1px solid #fff;
+    padding: 0 30px;
+    box-shadow: 0 0 20px rgba(14, 165, 233, 0.1);
     z-index: 10;
-    transition: left 1s linear; /* Smooth movement */
-    cursor: pointer;
 }
 
-.train-marker.airport {
-    background: #3498db; /* KA Bandara Biru */
-    border-radius: 10px;
+.brand-mini {
+    font-family: 'Orbitron';
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--neon-cyan);
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px var(--neon-cyan);
 }
 
-.train-marker.sf8 {
-    width: 30px; /* Lebih pendek */
-}
-
-/* Tooltip Kereta */
-.train-marker:hover::after {
-    content: attr(data-info);
-    position: absolute;
-    bottom: 25px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.8);
-    padding: 5px;
-    border-radius: 4px;
-    white-space: nowrap;
-    font-size: 10px;
-}
-
-/* --- CONTROL PANEL --- */
-.panel-container {
+.center-hud {
     display: flex;
-    flex: 1;
+    gap: 20px;
+}
+
+.hud-box {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-glass);
+    padding: 5px 20px;
+    border-radius: 4px;
+    font-family: 'Orbitron';
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
     gap: 10px;
+}
+.hud-box i { font-size: 0.9rem; opacity: 0.7; }
+
+/* 2. MAP AREA */
+#map-container {
+    flex: 1;
+    position: relative;
+    background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+    overflow: hidden;
+    cursor: crosshair;
+}
+canvas { display: block; }
+
+/* 3. BOTTOM PANEL (Control Deck) */
+.bottom-panel {
+    height: 120px;
+    background: var(--panel-glass);
+    border-top: 1px solid var(--border-glass);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    z-index: 10;
+}
+
+.station-display h4 { margin: 0; color: var(--neon-cyan); letter-spacing: 2px; font-size: 0.8rem; }
+.station-display h1 { margin: 0; font-family: 'Orbitron'; font-size: 2.5rem; color: white; text-transform: uppercase; }
+
+.control-group {
+    display: flex;
+    gap: 15px;
+}
+
+.btn-cyber {
+    background: rgba(14, 165, 233, 0.1);
+    border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    padding: 12px 30px;
+    font-family: 'Rajdhani';
+    font-weight: bold;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    cursor: pointer;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    transition: all 0.2s;
+}
+
+.btn-cyber:hover {
+    background: var(--neon-cyan);
+    color: black;
+    box-shadow: 0 0 15px var(--neon-cyan);
+}
+
+.btn-cyber.danger {
+    border-color: var(--neon-red);
+    color: var(--neon-red);
+    background: rgba(239, 68, 68, 0.1);
+}
+.btn-cyber.danger:hover {
+    background: var(--neon-red);
+    color: white;
+    box-shadow: 0 0 15px var(--neon-red);
+}
+
+/* --- DASHBOARD MENU (OVERLAY) --- */
+.dashboard-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: #020617;
+    display: flex;
+    z-index: 100;
+    transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+.dashboard-overlay.closed { transform: translateY(-100%); }
+
+.sidebar {
+    width: 300px;
+    background: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+    border-right: 1px solid #1e293b;
+    padding: 40px;
+    display: flex; flex-direction: column;
+}
+
+.logo-large { font-size: 4rem; color: var(--neon-cyan); margin-bottom: 20px; text-shadow: 0 0 20px var(--neon-cyan); }
+.menu-title { font-family: 'Orbitron'; font-size: 2rem; line-height: 1; margin: 0 0 50px 0; }
+.menu-title span { color: var(--neon-cyan); }
+
+.menu-list a {
+    display: block;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    text-decoration: none;
+    color: #94a3b8;
+    border-left: 3px solid transparent;
+    font-size: 1.2rem;
+    transition: 0.3s;
+    background: rgba(255,255,255,0.02);
+}
+.menu-list a.active, .menu-list a:hover {
+    color: white;
+    border-left-color: var(--neon-cyan);
+    background: linear-gradient(90deg, rgba(14, 165, 233, 0.1), transparent);
+    padding-left: 30px;
+}
+
+.content {
+    flex: 1;
+    padding: 50px;
+    background-image: 
+        radial-gradient(#1e293b 1px, transparent 1px),
+        radial-gradient(#1e293b 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: 0 0, 20px 20px;
+    overflow-y: auto;
+}
+
+.grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.level-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid #334155;
+    height: 220px;
+    padding: 25px;
+    position: relative;
+    cursor: pointer;
+    transition: 0.3s;
     overflow: hidden;
 }
-
-.interlocking-panel {
-    flex: 2;
-    background: var(--panel-bg);
-    padding: 10px;
-    overflow-y: auto;
-    border: 1px solid #444;
+.level-card:hover {
+    transform: translateY(-10px);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
-
-.station-control {
-    background: #222;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    border-left: 5px solid var(--track-color);
+.level-card::before {
+    content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+    background: var(--neon-cyan); transition: 0.3s;
 }
+.level-card:hover::before { width: 100%; opacity: 0.1; }
 
-.station-control h3 { margin-top: 0; color: var(--accent-yellow); }
+.level-card h3 { font-family: 'Orbitron'; margin-top: 10px; font-size: 1.5rem; }
+.level-card i { font-size: 3rem; color: #334155; position: absolute; top: 20px; right: 20px; transition: 0.3s; }
+.level-card:hover i { color: var(--neon-cyan); transform: scale(1.2); }
 
-.signal-group {
-    display: flex;
-    align-items: center;
-    margin-bottom: 5px;
-    gap: 10px;
-}
-.signal-group label { width: 120px; font-size: 0.9rem; }
-
-.controls-row {
-    display: flex;
-    gap: 10px;
-}
-.controls-row .station-control { flex: 1; }
-
-/* Tombol Sinyal */
-.sig-btn {
-    padding: 8px 12px;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
+/* TOAST */
+.toast {
+    position: fixed; top: 80px; right: 20px;
+    background: rgba(0,0,0,0.9);
+    border: 1px solid var(--neon-amber);
+    color: var(--neon-amber);
+    padding: 15px 25px;
     border-radius: 4px;
-    transition: background 0.2s;
-    font-size: 0.8rem;
-    color: #fff;
-    background: #444;
-    border: 2px solid #555;
+    font-weight: bold;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+    animation: slideIn 0.3s;
+    z-index: 9999;
 }
+@keyframes slideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
 
-.sig-btn.red { background: #500; border-color: #f00; color: #fbb; }
-.sig-btn.green { background: #050; border-color: #0f0; color: #bfb; box-shadow: 0 0 8px #0f0; }
-.sig-btn.yellow { background: #550; border-color: #ff0; color: #ff9; }
-
-/* --- MONITOR PANEL --- */
-.monitor-panel {
+/* --- SCHEDULE BOARD --- */
+.schedule-board {
     flex: 1;
+    margin: 0 30px;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #334155;
+    border-radius: 4px;
+    height: 90px;
+    overflow: hidden;
+    font-family: 'Rajdhani', monospace;
     display: flex;
     flex-direction: column;
-    gap: 10px;
 }
 
-.schedule-box, .log-box {
-    background: var(--panel-bg);
-    padding: 10px;
-    border: 1px solid #444;
+.sched-header {
+    background: #1e293b;
+    padding: 5px 15px;
+    display: grid;
+    grid-template-columns: 80px 1fr 100px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    border-bottom: 1px solid #334155;
+}
+
+#sched-list {
     flex: 1;
     overflow-y: auto;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-}
-th, td {
-    padding: 5px;
-    text-align: left;
-    border-bottom: 1px solid #444;
-}
-th { color: var(--accent-yellow); }
-
-ul { list-style: none; padding: 0; margin: 0; }
-li {
-    padding: 4px 0;
-    border-bottom: 1px solid #333;
-    font-size: 0.85rem;
-    font-family: monospace;
+.sched-row {
+    padding: 8px 15px;
+    display: grid;
+    grid-template-columns: 80px 1fr 100px;
+    color: #e2e8f0;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    animation: fadeIn 0.3s;
 }
 
-/* Tambahan CSS Visualisasi Baru */
+.sched-row span.moving { color: #facc15; animation: blink 1s infinite; }
+.sched-row.empty { text-align: center; display: block; padding-top: 20px; color: #475569; }
 
-/* Sinyal Blok di Peta */
-.station-marker.block-marker {
-    background: none;
-    border: none;
-    font-size: 1rem;
-    padding: 0;
-    top: 45px;
-    width: auto;
-    text-shadow: 0 0 5px #000;
+@keyframes blink { 50% { opacity: 0.5; } }
+
+/* --- TUTORIAL MODAL --- */
+#tutorial-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 9999;
+    opacity: 1; transition: opacity 0.3s;
+}
+#tutorial-modal.hidden { opacity: 0; pointer-events: none; }
+
+.modal-box {
+    background: #1e293b;
+    border: 1px solid var(--neon-cyan);
+    box-shadow: 0 0 30px rgba(14, 165, 233, 0.3);
+    padding: 30px;
+    width: 400px;
+    text-align: center;
+    border-radius: 10px;
+    animation: popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Garis Jalur Belok (Siding) */
-.track-line.siding-line {
-    background: #666;
-    height: 3px;
-    border-radius: 2px;
-    position: absolute;
-    /* top/left diatur via JS */
-}
+@keyframes popUp { from{transform:scale(0.8); opacity:0} to{transform:scale(1); opacity:1} }
 
-/* Status Text Color */
-/* ... CSS lama ... */
+.modal-icon { font-size: 3rem; color: var(--neon-cyan); margin-bottom: 15px; }
+.modal-box h2 { font-family: 'Orbitron'; margin: 0 0 10px 0; color: white; }
+.modal-box p { color: #cbd5e1; margin-bottom: 25px; line-height: 1.5; font-size: 1.1rem; }
 
-.status-warn { color: #ff4444; font-weight: bold; } /* Merah */
-.status-ok { color: #00cc66; font-weight: bold; }   /* Hijau */
-.status-caution { color: #ffcc00; font-weight: bold; } /* Kuning */
-.signal-group-vertical {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin-bottom: 5px;
+.btn-modal {
+    background: var(--neon-cyan); color: #0f172a; border: none;
+    padding: 10px 25px; font-weight: bold; border-radius: 5px;
+    cursor: pointer; font-family: 'Rajdhani'; font-size: 1.1rem;
+    transition: 0.2s;
 }
+.btn-modal:hover { background: #38bdf8; transform: scale(1.05); }

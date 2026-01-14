@@ -1,67 +1,99 @@
-const stationsData = require('../../data/stations.json');
+// src/core/Interlocking.js
 
 class Interlocking {
-    constructor() {
-        this.stations = stationsData.controlled_stations;
+    /**
+     * @param {Object} stationMap - Instance dari StationMap
+     * @param {Object} interlockingTable - Data aturan interlocking (JSON)
+     */
+    constructor(stationMap, interlockingTable) {
+        this.map = stationMap;
+        this.rules = interlockingTable || {}; // Data aturan interlocking
+        this.signals = {}; // State sinyal saat ini
+        this.activeRoutes = []; // Rute yang sedang terbentuk
+
+        // Inisialisasi status sinyal default (Merah)
         this.initSignals();
     }
 
     initSignals() {
-        console.log("🚦 Sistem Interlocking Tangerang Line Aktif.");
-        for (const stnId in this.stations) {
-            const signals = this.stations[stnId].signals;
-            for (const sigId in signals) {
-                signals[sigId].status = 'RED';
+        // Ambil semua sinyal dari peta stasiun
+        const stations = this.map.getStations();
+        
+        stations.forEach(station => {
+            if (station.signals) {
+                station.signals.forEach(sig => {
+                    this.signals[sig.id] = {
+                        id: sig.id,
+                        aspect: 'RED', // Default Merah
+                        type: sig.type
+                    };
+                });
             }
-        }
+        });
     }
 
-    // UPDATE: setSignal sekarang bisa mencari by Key ATAU by ID
-    setSignal(stationId, lookupId, newStatus) {
-        if (!this.stations[stationId]) {
-            console.log(`[ERROR] Stasiun tidak ditemukan: ${stationId}`);
+    // Mendapatkan status semua sinyal untuk dikirim ke Frontend
+    getSignalStates() {
+        return this.signals;
+    }
+
+    // Mencoba membentuk rute dari Sinyal A ke Sinyal B
+    setRoute(startSignalId, endSignalId) {
+        console.log(`[Interlocking] Request Route: ${startSignalId} -> ${endSignalId}`);
+
+        // 1. Validasi: Apakah rute ada di tabel interlocking?
+        const routeKey = `${startSignalId}-${endSignalId}`;
+        const routeRule = this.rules[routeKey];
+
+        if (!routeRule) {
+            console.log(`[Interlocking] Rute tidak valid/tidak terdaftar: ${routeKey}`);
             return false;
         }
 
-        const signals = this.stations[stationId].signals;
-
-        // CARA 1: Cek by Key (Langsung)
-        if (signals[lookupId]) {
-            signals[lookupId].status = newStatus;
-            console.log(`[WESEL] Sinyal ${lookupId} di ${stationId} -> ${newStatus}`);
-            return true;
+        // 2. Cek Konflik: Apakah wesel terkunci? Apakah jalur aman?
+        if (this.isRouteConflicted(routeRule)) {
+            console.log(`[Interlocking] Rute konflik!`);
+            return false;
         }
 
-        // CARA 2: Cari by ID (Looping) - Backup jika key beda
-        for (const key in signals) {
-            if (signals[key].id === lookupId) {
-                signals[key].status = newStatus;
-                console.log(`[WESEL] Sinyal (ID) ${lookupId} di ${stationId} -> ${newStatus}`);
-                return true;
-            }
-        }
+        // 3. Eksekusi: Kunci Wesel & Ubah Sinyal jadi Hijau
+        this.activateRoute(routeKey, routeRule);
+        return true;
+    }
 
-        console.log(`[ERROR] Sinyal tidak ditemukan: ${stationId} - ${lookupId}`);
+    isRouteConflicted(routeRule) {
+        // Logika cek konflik (misal cek apakah wesel sedang dipakai rute lain)
+        // Sederhana: return false dulu biar jalan
         return false;
     }
 
-    getSignalStatus(stationId, lookupId) {
-        if (!this.stations[stationId]) return 'RED';
-        const signals = this.stations[stationId].signals;
-
-        if (signals[lookupId]) return signals[lookupId].status;
-
-        for (const key in signals) {
-            if (signals[key].id === lookupId) {
-                return signals[key].status;
-            }
+    activateRoute(routeKey, routeRule) {
+        // Update status sinyal awal jadi Hijau
+        if (this.signals[routeRule.start_signal]) {
+            this.signals[routeRule.start_signal].aspect = 'GREEN';
         }
+        
+        this.activeRoutes.push({
+            key: routeKey,
+            switches: routeRule.switches // Daftar wesel yang dikunci
+        });
 
-        return 'RED';
+        console.log(`[Interlocking] Rute Terbentuk: ${routeKey}`);
+        
+        // Timer otomatis membatalkan rute (opsional, simulasi lewat)
+        setTimeout(() => {
+            this.releaseRoute(routeKey, routeRule);
+        }, 10000); // Reset setelah 10 detik (contoh)
     }
 
-    getAllSignals() {
-        return this.stations;
+    releaseRoute(routeKey, routeRule) {
+        // Kembalikan sinyal ke Merah
+        if (this.signals[routeRule.start_signal]) {
+            this.signals[routeRule.start_signal].aspect = 'RED';
+        }
+        // Hapus dari activeRoutes
+        this.activeRoutes = this.activeRoutes.filter(r => r.key !== routeKey);
+        console.log(`[Interlocking] Rute Rilis: ${routeKey}`);
     }
 }
 

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "MSG",
+    "name": "Stasiun Maseng",
+    "km": 14.1,
+    "type": "STATION",
+    "tracks": [
+      { 
+        "id": "T1", 
+        "name": "Jalur 1 (Belok)", 
+        "length": 300, 
+        "type": "SIDING", 
+        "max_speed": 30,
+        "start": { "x": 200, "y": 250 }, 
+        "end": { "x": 600, "y": 250 }
+      },
+      { 
+        "id": "T2", 
+        "name": "Jalur 2 (Lurus)", 
+        "length": 400, 
+        "type": "MAIN", 
+        "max_speed": 60,
+        "start": { "x": 100, "y": 300 }, 
+        "end": { "x": 700, "y": 300 }
+      }
+    ],
+    "switches": [
+      { "id": "W1", "name": "Wesel Barat", "position": "NORMAL", "normal_to": "T2", "reverse_to": "T1" },
+      { "id": "W2", "name": "Wesel Timur", "position": "NORMAL", "normal_to": "T2", "reverse_to": "T1" }
+    ],
+    "signals": [
+      { 
+        "id": "J1", 
+        "name": "Sinyal Masuk (Arah Bogor)", 
+        "type": "LEN-02", 
+        "aspect": "RED", 
+        "linked_switch": "W1",
+        "position": { "x": 80, "y": 280 }
+      },
+      { 
+        "id": "J2", 
+        "name": "Sinyal Keluar (Arah Sukabumi)", 
+        "type": "LEN-02", 
+        "aspect": "RED", 
+        "linked_switch": "W2",
+        "position": { "x": 720, "y": 280 }
+      }
+    ]
+  }
+]
